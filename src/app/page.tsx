@@ -1,12 +1,10 @@
-"use client";
-
-import { signIn, useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useTheme } from "next-themes";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 import Image from "next/image";
 import { HalftoneBackground } from "@/components/ui/halftone-background";
 import { AgentIcon } from "@/components/ui/agent-icon";
+import { LoginButton } from "@/components/login-button";
 
 function KeyboardIcon({ className }: { className?: string }) {
   return (
@@ -33,30 +31,14 @@ function ArrowRightIcon({ className }: { className?: string }) {
   );
 }
 
-export default function LoginPage() {
-  const { data: session, isPending } = useSession();
-  const router = useRouter();
-  const { setTheme } = useTheme();
+export default async function LoginPage() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-  useEffect(() => {
-    setTheme("light");
-  }, [setTheme]);
-
-  useEffect(() => {
-    if (session) {
-      router.push("/dashboard");
-    }
-  }, [session, router]);
-
-  if (isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-4 h-4 border-2 border-foreground/20 border-t-foreground/60 rounded-full animate-spin" />
-      </div>
-    );
+  if (session) {
+    redirect("/dashboard");
   }
-
-  if (session) return null;
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -193,19 +175,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <button
-            onClick={() =>
-              signIn.social({
-                provider: "github",
-                callbackURL: "/dashboard",
-              })
-            }
-            className="w-full flex items-center justify-center gap-3 bg-foreground text-background font-medium py-3 px-6 rounded-md text-sm hover:bg-foreground/90 transition-colors cursor-pointer"
-          >
-            <GithubIcon className="w-4 h-4" />
-            Continue with GitHub
-            <ArrowRightIcon className="w-3.5 h-3.5 ml-auto" />
-          </button>
+          <LoginButton />
 
           <p className="text-[11px] text-foreground/50 mt-2">
             We&apos;ll request read access to your repos, PRs &amp;
