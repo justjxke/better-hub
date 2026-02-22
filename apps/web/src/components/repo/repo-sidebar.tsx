@@ -87,6 +87,7 @@ export function RepoSidebar({
       : { label: "Public", icon: Globe },
     ...(archived ? [{ label: "Archived", icon: Archive }] : []),
     ...(fork ? [{ label: "Fork", icon: GitFork }] : []),
+    ...(homepage ? [{ label: "Website", icon: LinkIcon, href: homepage }] : []),
   ];
 
   return (
@@ -123,15 +124,31 @@ export function RepoSidebar({
             </p>
           )}
           <div className="flex flex-wrap gap-1.5">
-            {badges.map((b) => (
-              <span
-                key={b.label}
-                className="flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 border border-dashed border-border rounded-full text-muted-foreground"
-              >
-                <b.icon className="w-2.5 h-2.5" />
-                {b.label}
-              </span>
-            ))}
+            {badges.map((b) => {
+              const content = (
+                <>
+                  <b.icon className="w-2.5 h-2.5" />
+                  {b.label}
+                </>
+              );
+              const className =
+                "flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 border border-dashed border-border rounded-full text-muted-foreground";
+              return "href" in b && b.href ? (
+                <a
+                  key={b.label}
+                  href={b.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${className} hover:text-foreground transition-colors`}
+                >
+                  {content}
+                </a>
+              ) : (
+                <span key={b.label} className={className}>
+                  {content}
+                </span>
+              );
+            })}
           </div>
           {fork && parent && (
             <p className="text-[11px] text-muted-foreground/60">
@@ -276,15 +293,31 @@ export function RepoSidebar({
             </p>
           )}
           <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-            {badges.map((b) => (
-              <span
-                key={b.label}
-                className="flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 border border-dashed border-border rounded-full text-muted-foreground"
-              >
-                <b.icon className="w-2.5 h-2.5" />
-                {b.label}
-              </span>
-            ))}
+            {badges.map((b) => {
+              const content = (
+                <>
+                  <b.icon className="w-2.5 h-2.5" />
+                  {b.label}
+                </>
+              );
+              const className =
+                "flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 border border-dashed border-border rounded-full text-muted-foreground";
+              return "href" in b && b.href ? (
+                <a
+                  key={b.label}
+                  href={b.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${className} hover:text-foreground transition-colors`}
+                >
+                  {content}
+                </a>
+              ) : (
+                <span key={b.label} className={className}>
+                  {content}
+                </span>
+              );
+            })}
             <StarButton owner={owner} repo={repoName} starred={isStarred} starCount={stars} />
             <span className="flex items-center gap-1 text-[11px] text-muted-foreground/70">
               <GitFork className="w-3 h-3" />
