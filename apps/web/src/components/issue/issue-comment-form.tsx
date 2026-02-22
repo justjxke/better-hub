@@ -64,25 +64,11 @@ export function IssueCommentForm({
 
 	const isOpen = issueState === "open";
 
-	// Clear optimistic comments once the transition settles (server data arrived)
-	const [wasTransitioning, setWasTransitioning] = useState(false);
-	useEffect(() => {
-		if (isPending) {
-			setWasTransitioning(true);
-		} else if (wasTransitioning) {
-			setWasTransitioning(false);
-			// Small delay to let the RSC payload render
-			const timer = setTimeout(() => setOptimisticComments([]), 500);
-			return () => clearTimeout(timer);
-		}
-	}, [isPending, wasTransitioning]);
-
 	const handleSubmit = () => {
 		if (!body.trim()) return;
 		const commentBody = body.trim();
 		setError(null);
 
-		// Show comment optimistically
 		const optimisticId = Date.now();
 		setOptimisticComments((prev) => [
 			...prev,
@@ -94,7 +80,7 @@ export function IssueCommentForm({
 		]);
 		setBody("");
 
-		startTransition(async () => {
+		(async () => {
 			const res = await addIssueComment(owner, repo, issueNumber, commentBody);
 			if (res.error) {
 				setError(res.error);
@@ -105,8 +91,9 @@ export function IssueCommentForm({
 			} else {
 				emit({ type: "issue:commented", owner, repo, number: issueNumber });
 				router.refresh();
+				setTimeout(() => setOptimisticComments((prev) => prev.filter((c) => c.id !== optimisticId)), 2000);
 			}
-		});
+		})();
 	};
 
 	const handleClose = (reason: CloseReason) => {
@@ -175,9 +162,6 @@ export function IssueCommentForm({
 						<span className="text-[10px] text-muted-foreground/40 ml-auto shrink-0">
 							<TimeAgo date={c.created_at} />
 						</span>
-						{isPending && (
-							<Loader2 className="w-3 h-3 animate-spin text-muted-foreground/40 shrink-0" />
-						)}
 					</div>
 					<div className="px-3 py-2.5 text-sm">
 						<ClientMarkdown content={c.body} />

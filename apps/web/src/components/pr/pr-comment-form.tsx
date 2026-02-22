@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, CornerDownLeft } from "lucide-react";
+import { CornerDownLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { addPRComment } from "@/app/(app)/repos/[owner]/[repo]/pulls/pr-actions";
@@ -37,28 +37,14 @@ export function PRCommentForm({
 	const router = useRouter();
 	const { emit } = useMutationEvents();
 	const [body, setBody] = useState("");
-	const [isPending, startTransition] = useTransition();
 	const [error, setError] = useState<string | null>(null);
 	const [optimisticComments, setOptimisticComments] = useState<OptimisticComment[]>([]);
-
-	// Clear optimistic comments once the transition settles
-	const [wasTransitioning, setWasTransitioning] = useState(false);
-	useEffect(() => {
-		if (isPending) {
-			setWasTransitioning(true);
-		} else if (wasTransitioning) {
-			setWasTransitioning(false);
-			const timer = setTimeout(() => setOptimisticComments([]), 500);
-			return () => clearTimeout(timer);
-		}
-	}, [isPending, wasTransitioning]);
 
 	const handleSubmit = () => {
 		if (!body.trim()) return;
 		const commentBody = body.trim();
 		setError(null);
 
-		// Show comment optimistically
 		const optimisticId = Date.now();
 		setOptimisticComments((prev) => [
 			...prev,
@@ -70,7 +56,7 @@ export function PRCommentForm({
 		]);
 		setBody("");
 
-		startTransition(async () => {
+		(async () => {
 			const res = await addPRComment(owner, repo, pullNumber, commentBody);
 			if (res.error) {
 				setError(res.error);
@@ -81,8 +67,9 @@ export function PRCommentForm({
 			} else {
 				emit({ type: "pr:commented", owner, repo, number: pullNumber });
 				router.refresh();
+				setTimeout(() => setOptimisticComments((prev) => prev.filter((c) => c.id !== optimisticId)), 2000);
 			}
-		});
+		})();
 	};
 
 	return (
@@ -111,9 +98,6 @@ export function PRCommentForm({
 						<span className="text-[10px] text-muted-foreground/40 ml-auto shrink-0">
 							<TimeAgo date={c.created_at} />
 						</span>
-						{isPending && (
-							<Loader2 className="w-3 h-3 animate-spin text-muted-foreground/40 shrink-0" />
-						)}
 					</div>
 					<div className="px-3 py-2.5 text-sm">
 						<ClientMarkdown content={c.body} />
@@ -167,7 +151,7 @@ export function PRCommentForm({
 						</div>
 						<button
 							onClick={handleSubmit}
-							disabled={isPending || !body.trim()}
+							disabled={!body.trim()}
 							className={cn(
 								"flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md",
 								"border border-border",
@@ -176,11 +160,7 @@ export function PRCommentForm({
 								"disabled:opacity-40 disabled:cursor-not-allowed",
 							)}
 						>
-							{isPending ? (
-								<Loader2 className="w-3.5 h-3.5 animate-spin" />
-							) : (
-								<CornerDownLeft className="w-3.5 h-3.5" />
-							)}
+							<CornerDownLeft className="w-3.5 h-3.5" />
 							Comment
 						</button>
 					</div>

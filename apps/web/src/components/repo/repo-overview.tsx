@@ -41,7 +41,7 @@ function Section({
 	className?: string;
 }) {
 	return (
-		<div className={cn("p-4 flex flex-col lg:min-h-0 rounded-md border border-border/40", className)}>
+		<div className={cn("p-4 flex flex-col lg:min-h-0", className)}>
 			<div className="flex items-baseline gap-2 mb-4 shrink-0">
 				<h3 className="text-sm font-medium text-foreground">{title}</h3>
 				{subtitle && (
@@ -781,7 +781,7 @@ function CIStatusCard({
 	return (
 		<div
 			className={cn(
-				"rounded-md p-4 border border-border/40",
+				"rounded-md p-4",
 				hasFails && "border-l-2 border-l-destructive/50",
 			)}
 		>
@@ -913,7 +913,7 @@ function ReadmeSkeleton() {
 
 function CIStatusSkeleton() {
 	return (
-		<div className="rounded-md p-4 border border-border/40 animate-pulse">
+		<div className="rounded-md p-4 animate-pulse">
 			<div className="flex items-center gap-3">
 				<div className="w-5 h-5 rounded-full bg-muted" />
 				<div className="h-3.5 w-48 bg-muted rounded" />
@@ -924,7 +924,7 @@ function CIStatusSkeleton() {
 
 function ActivitySkeleton() {
 	return (
-		<div className="p-4 flex flex-col lg:min-h-0 rounded-md border border-border/40 animate-pulse">
+		<div className="p-4 flex flex-col lg:min-h-0 animate-pulse">
 			<div className="flex items-baseline gap-2 mb-4">
 				<div className="h-4 w-28 bg-muted rounded" />
 			</div>
@@ -963,7 +963,7 @@ function ActivitySkeleton() {
 
 function ListSkeleton({ title }: { title: string }) {
 	return (
-		<div className="p-4 flex flex-col lg:min-h-0 rounded-md border border-border/40 animate-pulse">
+		<div className="p-4 flex flex-col lg:min-h-0 animate-pulse">
 			<div className="flex items-baseline gap-2 mb-4">
 				<h3 className="text-sm font-medium text-foreground">{title}</h3>
 			</div>
