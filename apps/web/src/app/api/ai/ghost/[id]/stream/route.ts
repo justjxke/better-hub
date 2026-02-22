@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getConversationById } from "@/lib/chat-store";
+import { getConversation } from "@/lib/chat-store";
 import { streamContext } from "@/lib/resumable-stream";
 import { headers } from "next/headers";
 
@@ -12,16 +12,14 @@ export async function GET(
 		return new Response("Unauthorized", { status: 401 });
 	}
 
-	const { id: conversationId } = await params;
+	const { id: contextKey } = await params;
 
-	const conversation = await getConversationById(conversationId);
-	if (!conversation) {
-		return new Response("Not found", { status: 404 });
+	const result = await getConversation(session.user.id, contextKey);
+	if (!result) {
+		return new Response(null, { status: 204 });
 	}
 
-	if (conversation.userId !== session.user.id) {
-		return new Response("Forbidden", { status: 403 });
-	}
+	const { conversation } = result;
 
 	if (!conversation.activeStreamId) {
 		return new Response(null, { status: 204 });
