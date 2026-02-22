@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-	productionBrowserSourceMaps: process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL === 'beta.better-hub.com',
 	devIndicators: false,
 	serverExternalPackages: ["@prisma/client"],
 	experimental: {
