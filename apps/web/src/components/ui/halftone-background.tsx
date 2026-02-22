@@ -30,8 +30,7 @@ float snoise(vec2 v) {
   );
   vec2 i = floor(v + dot(v, C.yy));
   vec2 x0 = v - i + dot(i, C.xx);
-  vec2 i1;
-  i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
   vec4 x12 = x0.xyxy + C.xxzz;
   x12.xy -= i1;
   i = mod289(i);
@@ -62,57 +61,84 @@ float fbm(vec2 p) {
   return value;
 }
 
+float hash21(vec2 p) {
+  p = fract(p * vec2(233.34, 851.73));
+  p += dot(p, p + 23.45);
+  return fract(p.x * p.y);
+}
+
 void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution.xy;
   float aspect = u_resolution.x / u_resolution.y;
-  vec2 p = vec2(uv.x * aspect, uv.y) * 2.5;
+  float time = u_time;
+  float t = time * 0.04;
 
-  float t = u_time * 0.04;
+  vec2 ap = vec2(uv.x * aspect, uv.y);
 
-  vec2 mouseUV = u_mouse;
-  mouseUV.x *= aspect;
-  mouseUV *= 2.5;
-  vec2 diff = p - mouseUV;
-  float dist = length(diff);
-  float radius = 0.5;
-  if (u_mouse.x > 0.0 && dist < radius) {
-    float strength = smoothstep(radius, 0.0, dist) * 0.2;
-    vec2 push = normalize(diff) * strength;
-    p += push;
+  // ═══ SHARED MOUSE WARP ═══
+  vec2 scaledP = ap * 2.5;
+  vec2 mUV = u_mouse;
+  mUV.x *= aspect;
+  mUV *= 2.5;
+  vec2 mDiff = scaledP - mUV;
+  float mDist = length(mDiff);
+  vec2 warp = vec2(0.0);
+  if (u_mouse.x > 0.0 && mDist < 0.5) {
+    warp = normalize(mDiff) * smoothstep(0.5, 0.0, mDist) * 0.2;
   }
-
   if (u_click > 0.01) {
-    vec2 clickUV = u_clickPos;
-    clickUV.x *= aspect;
-    clickUV *= 2.5;
-    vec2 cdiff = p - clickUV;
-    float cdist = length(cdiff);
-    float ripple = sin(cdist * 12.0 - u_time * 8.0) * u_click * 0.4;
-    float falloff = exp(-cdist * 2.0);
-    p += normalize(cdiff + 0.001) * ripple * falloff;
+    vec2 cUV = u_clickPos;
+    cUV.x *= aspect;
+    cUV *= 2.5;
+    vec2 cD = scaledP - cUV;
+    float cDist = length(cD);
+    warp += normalize(cD + 0.001) * sin(cDist * 12.0 - time * 8.0) * u_click * 0.4 * exp(-cDist * 2.0);
   }
 
-  vec2 q = vec2(
-    fbm(p + vec2(0.0, 0.0) + t * 0.3),
-    fbm(p + vec2(5.2, 1.3) + t * 0.2)
-  );
-
+  // ═══ NOISE LAYER ═══
+  vec2 np = scaledP + warp;
+  vec2 q = vec2(fbm(np + t * 0.3), fbm(np + vec2(5.2, 1.3) + t * 0.2));
   vec2 r = vec2(
-    fbm(p + 4.0 * q + vec2(1.7, 9.2) + t * 0.15),
-    fbm(p + 4.0 * q + vec2(8.3, 2.8) + t * 0.12)
+    fbm(np + 4.0 * q + vec2(1.7, 9.2) + t * 0.15),
+    fbm(np + 4.0 * q + vec2(8.3, 2.8) + t * 0.12)
   );
+  float f = fbm(np + 4.0 * r);
+  float noise = clamp(f*f*f + 0.6*f*f + 0.5*f, 0.0, 1.0) * 0.15;
 
-  float f = fbm(p + 4.0 * r);
+  // ═══ CONTRIBUTION GRID ═══
+  vec2 gp = ap;
+  gp += vec2(snoise(ap * 3.0 + t), snoise(ap * 3.0 + t + 50.0)) * 0.004;
+  gp += warp * 0.04;
+  gp += vec2(t * 0.2, t * 0.12);
 
-  float brightness = (f * f * f + 0.6 * f * f + 0.5 * f);
-  brightness = clamp(brightness, 0.0, 1.0);
-  brightness *= 0.15;
+  float cellTotal = 0.025;
+  vec2 cellId = floor(gp / cellTotal);
+  vec2 cellUV = fract(gp / cellTotal);
 
+  float pad = 0.10;
+  float edge = 0.04;
+  float inX = smoothstep(pad - edge, pad + edge, cellUV.x)
+            * (1.0 - smoothstep(1.0 - pad - edge, 1.0 - pad + edge, cellUV.x));
+  float inY = smoothstep(pad - edge, pad + edge, cellUV.y)
+            * (1.0 - smoothstep(1.0 - pad - edge, 1.0 - pad + edge, cellUV.y));
+  float inSquare = inX * inY;
+
+  float hVal = hash21(cellId);
+  float level = hVal < 0.35 ? 0.0 : (hVal - 0.35) / 0.65;
+  level *= level;
+
+  vec2 fp = uv - vec2(0.45, 0.55);
+  float gFade = max(1.0 - smoothstep(0.15, 0.45, length(fp * vec2(1.3, 1.6))), 0.0);
+
+  float gridReveal = smoothstep(0.5, 3.0, time);
+  float grid = inSquare * level * gFade * gridReveal * 0.10;
+
+  // ═══ COMPOSE ═══
   vec2 vc = uv - 0.5;
   float vignette = 1.0 - dot(vc, vc) * 0.3;
-  brightness *= vignette;
 
-  gl_FragColor = vec4(vec3(brightness), 1.0);
+  float col = noise * vignette + grid;
+  gl_FragColor = vec4(vec3(col), 1.0);
 }`;
 
 export function HalftoneBackground() {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useTransition, useOptimistic } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
 	ArrowLeft,
@@ -14,9 +15,12 @@ import {
 	Loader2,
 	AlertCircle,
 	Ghost,
+	MessageSquare,
+	Send,
 } from "lucide-react";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { ClientMarkdown } from "@/components/shared/client-markdown";
+import { MarkdownEditor } from "@/components/shared/markdown-editor";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { useGlobalChat } from "@/components/shared/global-chat-provider";
 import { useMutationEvents } from "@/components/shared/mutation-event-provider";
@@ -26,8 +30,10 @@ import {
 	resetPromptRequest,
 	deletePromptRequestAction,
 	linkGhostTab,
+	addPromptComment,
+	deletePromptComment,
 } from "@/app/(app)/repos/[owner]/[repo]/prompts/actions";
-import type { PromptRequest, PromptRequestStatus } from "@/lib/prompt-request-store";
+import type { PromptRequest, PromptRequestStatus, PromptRequestComment } from "@/lib/prompt-request-store";
 
 const statusColors: Record<PromptRequestStatus, string> = {
 	open: "bg-green-500/15 text-green-400",
@@ -56,9 +62,11 @@ interface PromptDetailProps {
 	owner: string;
 	repo: string;
 	promptRequest: PromptRequest;
+	comments: PromptRequestComment[];
+	currentUser: { id: string; name: string; image: string } | null;
 }
 
-export function PromptDetail({ owner, repo, promptRequest }: PromptDetailProps) {
+export function PromptDetail({ owner, repo, promptRequest, comments, currentUser }: PromptDetailProps) {
 	const router = useRouter();
 	const {
 		openChat,
@@ -82,6 +90,54 @@ export function PromptDetail({ owner, repo, promptRequest }: PromptDetailProps) 
 	useEffect(() => {
 		if (promptRequest.ghostTabId) linkedTabIdRef.current = promptRequest.ghostTabId;
 	}, [promptRequest.ghostTabId]);
+
+	// Comment state
+	const [commentBody, setCommentBody] = useState("");
+	const [isSubmittingComment, startCommentTransition] = useTransition();
+	const [optimisticComments, addOptimisticComment] = useOptimistic(
+		comments,
+		(state: PromptRequestComment[], action: { type: "add"; comment: PromptRequestComment } | { type: "delete"; id: string }) => {
+			if (action.type === "add") return [...state, action.comment];
+			return state.filter((c) => c.id !== action.id);
+		},
+	);
+
+	const handleAddComment = () => {
+		const body = commentBody.trim();
+		if (!body || !currentUser) return;
+
+		const optimistic: PromptRequestComment = {
+			id: `optimistic-${Date.now()}`,
+			promptRequestId: promptRequest.id,
+			userId: currentUser.id,
+			userName: currentUser.name,
+			userAvatarUrl: currentUser.image,
+			body,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		};
+
+		setCommentBody("");
+		startCommentTransition(async () => {
+			addOptimisticComment({ type: "add", comment: optimistic });
+			try {
+				await addPromptComment(promptRequest.id, body);
+			} catch {
+				// revalidation from server action will restore correct state
+			}
+		});
+	};
+
+	const handleDeleteComment = (commentId: string) => {
+		startCommentTransition(async () => {
+			addOptimisticComment({ type: "delete", id: commentId });
+			try {
+				await deletePromptComment(commentId, promptRequest.id);
+			} catch {
+				// revalidation from server action will restore correct state
+			}
+		});
+	};
 
 	// Poll for status changes while processing
 	const isProcessing = promptRequest.status === "processing";
@@ -395,6 +451,93 @@ export function PromptDetail({ owner, repo, promptRequest }: PromptDetailProps) 
 			{/* Body */}
 			<div className="border border-border rounded-lg p-4">
 				<ClientMarkdown content={promptRequest.body} />
+			</div>
+
+			{/* Comments */}
+			<div className="space-y-4">
+				<div className="flex items-center gap-2 text-xs text-muted-foreground/60 font-mono">
+					<MessageSquare className="w-3.5 h-3.5" />
+					{optimisticComments.length} comment{optimisticComments.length !== 1 ? "s" : ""}
+				</div>
+
+				{optimisticComments.length > 0 && (
+					<div className="space-y-3">
+						{optimisticComments.map((comment) => (
+							<div
+								key={comment.id}
+								className={cn(
+									"border border-border rounded-lg p-3 space-y-2",
+									comment.id.startsWith("optimistic-") && "opacity-60",
+								)}
+							>
+								<div className="flex items-center gap-2">
+									{comment.userAvatarUrl ? (
+										<Image
+											src={comment.userAvatarUrl}
+											alt={comment.userName}
+											width={20}
+											height={20}
+											className="rounded-full"
+										/>
+									) : (
+										<div className="w-5 h-5 rounded-full bg-muted" />
+									)}
+									<span className="text-xs font-medium text-foreground">
+										{comment.userName}
+									</span>
+									<span className="text-[11px] text-muted-foreground/50 font-mono">
+										<TimeAgo date={comment.createdAt} />
+									</span>
+									<div className="flex-1" />
+									{currentUser?.id === comment.userId && !comment.id.startsWith("optimistic-") && (
+										<button
+											onClick={() => handleDeleteComment(comment.id)}
+											className="text-muted-foreground/30 hover:text-red-400 transition-colors cursor-pointer"
+											title="Delete comment"
+										>
+											<Trash2 className="w-3 h-3" />
+										</button>
+									)}
+								</div>
+								<div className="pl-7">
+									<ClientMarkdown content={comment.body} />
+								</div>
+							</div>
+						))}
+					</div>
+				)}
+
+				{currentUser && (
+					<div className="space-y-2">
+						<MarkdownEditor
+							value={commentBody}
+							onChange={setCommentBody}
+							placeholder="Leave a comment..."
+							compact
+							rows={3}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+									e.preventDefault();
+									handleAddComment();
+								}
+							}}
+						/>
+						<div className="flex justify-end">
+							<button
+								onClick={handleAddComment}
+								disabled={!commentBody.trim() || isSubmittingComment}
+								className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-foreground text-background rounded-md hover:opacity-90 transition-opacity disabled:opacity-40 cursor-pointer"
+							>
+								{isSubmittingComment ? (
+									<Loader2 className="w-3 h-3 animate-spin" />
+								) : (
+									<Send className="w-3 h-3" />
+								)}
+								Comment
+							</button>
+						</div>
+					</div>
+				)}
 			</div>
 
 			{/* Actions */}

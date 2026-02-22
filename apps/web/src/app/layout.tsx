@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { generateThemeScript } from "@/lib/theme-script";
 import { listThemes } from "@/lib/themes";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -21,9 +22,36 @@ const jetbrainsMono = JetBrains_Mono({
 	subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://better-hub.com";
+
 export const metadata: Metadata = {
-	title: "Better Hub",
+	title: {
+		default: "Better Hub",
+		template: "%s | Better Hub",
+	},
 	description: "Re-imagining code collaboration for humans and agents.",
+	metadataBase: new URL(siteUrl),
+	openGraph: {
+		title: "Better Hub",
+		description: "Re-imagining code collaboration for humans and agents.",
+		siteName: "Better Hub",
+		url: siteUrl,
+		images: [
+			{
+				url: "/og.png",
+				width: 1200,
+				height: 630,
+				alt: "Better Hub",
+			},
+		],
+		type: "website",
+	},
+	twitter: {
+		card: "summary_large_image",
+		title: "Better Hub",
+		description: "Re-imagining code collaboration for humans and agents.",
+		images: ["/og.png"],
+	},
 };
 
 export default function RootLayout({
@@ -44,13 +72,15 @@ export default function RootLayout({
 				className={`${geistSans.variable} ${geistMono.variable} ${jetbrainsMono.variable} antialiased`}
 				suppressHydrationWarning
 			>
-				<ThemeProvider
-					attribute="class"
-					defaultTheme="dark"
-					enableColorScheme={false}
-				>
-					{children}
-				</ThemeProvider>
+				<QueryProvider>
+					<ThemeProvider
+						attribute="class"
+						defaultTheme="dark"
+						enableColorScheme={false}
+					>
+						{children}
+					</ThemeProvider>
+				</QueryProvider>
 			</body>
 		</html>
 	);

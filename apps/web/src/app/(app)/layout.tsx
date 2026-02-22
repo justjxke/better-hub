@@ -8,7 +8,6 @@ import { ColorThemeProvider } from "@/components/theme/theme-provider";
 import { CodeThemeProvider } from "@/components/theme/code-theme-provider";
 import { GitHubLinkInterceptor } from "@/components/shared/github-link-interceptor";
 import { MutationEventProvider } from "@/components/shared/mutation-event-provider";
-import { QueryProvider } from "@/components/providers/query-provider";
 import { redirect } from "next/navigation";
 import { OnboardingOverlay } from "@/components/onboarding/onboarding-overlay";
 
@@ -24,76 +23,35 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 	};
 
 	return (
-		<QueryProvider>
-			<GlobalChatProvider initialTabState={initialTabState}>
-				<MutationEventProvider>
-					<ColorThemeProvider>
-						<CodeThemeProvider>
-							<GitHubLinkInterceptor>
-								<div className="flex flex-col h-dvh overflow-y-auto lg:overflow-hidden">
-									<AppNavbar
-										session={session}
-									/>
-									<div className="mt-10 lg:h-[calc(100dvh-var(--spacing)*10)] flex flex-col px-2 sm:px-4 pt-2 lg:overflow-auto">
-										{children}
-									</div>
-									<Suspense>
-										<GlobalChatPanel />
-									</Suspense>
+		<GlobalChatProvider initialTabState={initialTabState}>
+			<MutationEventProvider>
+				<ColorThemeProvider>
+					<CodeThemeProvider>
+						<GitHubLinkInterceptor>
+							<div className="flex flex-col h-dvh overflow-y-auto lg:overflow-hidden">
+								<AppNavbar session={session} />
+								<div className="mt-10 lg:h-[calc(100dvh-var(--spacing)*10)] flex flex-col px-2 sm:px-4 pt-2 lg:overflow-auto">
+									{children}
 								</div>
-								<OnboardingOverlay
-									userName={
-										session?.githubUser
-											?.name ||
-										session?.githubUser
-											?.login ||
-										""
-									}
-									userAvatar={
-										session?.githubUser
-											?.avatar_url ||
-										""
-									}
-									bio={
-										session?.githubUser
-											?.bio || ""
-									}
-									company={
-										session?.githubUser
-											?.company ||
-										""
-									}
-									location={
-										session?.githubUser
-											?.location ||
-										""
-									}
-									publicRepos={
-										session?.githubUser
-											?.public_repos ??
-										0
-									}
-									followers={
-										session?.githubUser
-											?.followers ??
-										0
-									}
-									createdAt={
-										session?.githubUser
-											?.created_at ||
-										""
-									}
-									onboardingDone={
-										session?.user
-											?.onboardingDone ??
-										false
-									}
-								/>
-							</GitHubLinkInterceptor>
-						</CodeThemeProvider>
-					</ColorThemeProvider>
-				</MutationEventProvider>
-			</GlobalChatProvider>
-		</QueryProvider>
+								<Suspense>
+									<GlobalChatPanel />
+								</Suspense>
+							</div>
+							<OnboardingOverlay
+								userName={session?.githubUser?.name || session?.githubUser?.login || ""}
+								userAvatar={session?.githubUser?.avatar_url || ""}
+								bio={session?.githubUser?.bio || ""}
+								company={session?.githubUser?.company || ""}
+								location={session?.githubUser?.location || ""}
+								publicRepos={session?.githubUser?.public_repos ?? 0}
+								followers={session?.githubUser?.followers ?? 0}
+								createdAt={session?.githubUser?.created_at || ""}
+								onboardingDone={session?.user?.onboardingDone ?? false}
+							/>
+						</GitHubLinkInterceptor>
+					</CodeThemeProvider>
+				</ColorThemeProvider>
+			</MutationEventProvider>
+		</GlobalChatProvider>
 	);
 }

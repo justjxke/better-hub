@@ -7,6 +7,9 @@ import {
 	deletePromptRequest,
 	getPromptRequest,
 	setPromptRequestGhostTabId,
+	createPromptRequestComment,
+	deletePromptRequestComment,
+	getPromptRequestComment,
 } from "@/lib/prompt-request-store";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -64,4 +67,38 @@ export async function deletePromptRequestAction(id: string) {
 
 	await deletePromptRequest(id);
 	revalidatePath(`/repos/${pr.owner}/${pr.repo}/prompts`);
+}
+
+export async function addPromptComment(promptRequestId: string, body: string) {
+	const session = await auth.api.getSession({ headers: await headers() });
+	if (!session?.user?.id) throw new Error("Unauthorized");
+
+	const pr = await getPromptRequest(promptRequestId);
+	if (!pr) throw new Error("Prompt request not found");
+
+	const comment = await createPromptRequestComment(
+		promptRequestId,
+		session.user.id,
+		session.user.name,
+		session.user.image ?? "",
+		body,
+	);
+
+	revalidatePath(`/repos/${pr.owner}/${pr.repo}/prompts/${promptRequestId}`);
+	return comment;
+}
+
+export async function deletePromptComment(commentId: string, promptRequestId: string) {
+	const session = await auth.api.getSession({ headers: await headers() });
+	if (!session?.user?.id) throw new Error("Unauthorized");
+
+	const comment = await getPromptRequestComment(commentId);
+	if (!comment) throw new Error("Comment not found");
+	if (comment.userId !== session.user.id) throw new Error("Not authorized to delete this comment");
+
+	const pr = await getPromptRequest(promptRequestId);
+	if (!pr) throw new Error("Prompt request not found");
+
+	await deletePromptRequestComment(commentId);
+	revalidatePath(`/repos/${pr.owner}/${pr.repo}/prompts/${promptRequestId}`);
 }

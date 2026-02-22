@@ -162,5 +162,88 @@ export async function updatePromptRequestProgress(
 }
 
 export async function deletePromptRequest(id: string): Promise<void> {
+	await prisma.promptRequestComment.deleteMany({ where: { promptRequestId: id } });
 	await prisma.promptRequest.delete({ where: { id } });
+}
+
+// --- Prompt Request Comments ---
+
+export interface PromptRequestComment {
+	id: string;
+	promptRequestId: string;
+	userId: string;
+	userName: string;
+	userAvatarUrl: string;
+	body: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+function toPromptRequestComment(row: {
+	id: string;
+	promptRequestId: string;
+	userId: string;
+	userName: string;
+	userAvatarUrl: string;
+	body: string;
+	createdAt: string;
+	updatedAt: string;
+}): PromptRequestComment {
+	return {
+		id: row.id,
+		promptRequestId: row.promptRequestId,
+		userId: row.userId,
+		userName: row.userName,
+		userAvatarUrl: row.userAvatarUrl,
+		body: row.body,
+		createdAt: row.createdAt,
+		updatedAt: row.updatedAt,
+	};
+}
+
+export async function createPromptRequestComment(
+	promptRequestId: string,
+	userId: string,
+	userName: string,
+	userAvatarUrl: string,
+	body: string,
+): Promise<PromptRequestComment> {
+	const id = crypto.randomUUID();
+	const now = new Date().toISOString();
+
+	const created = await prisma.promptRequestComment.create({
+		data: {
+			id,
+			promptRequestId,
+			userId,
+			userName,
+			userAvatarUrl,
+			body,
+			createdAt: now,
+			updatedAt: now,
+		},
+	});
+
+	return toPromptRequestComment(created);
+}
+
+export async function listPromptRequestComments(
+	promptRequestId: string,
+): Promise<PromptRequestComment[]> {
+	const rows = await prisma.promptRequestComment.findMany({
+		where: { promptRequestId },
+		orderBy: { createdAt: "asc" },
+	});
+	return rows.map(toPromptRequestComment);
+}
+
+export async function deletePromptRequestComment(id: string): Promise<void> {
+	await prisma.promptRequestComment.delete({ where: { id } });
+}
+
+export async function getPromptRequestComment(
+	id: string,
+): Promise<PromptRequestComment | null> {
+	const row = await prisma.promptRequestComment.findUnique({ where: { id } });
+	return row ? toPromptRequestComment(row) : null;
 }

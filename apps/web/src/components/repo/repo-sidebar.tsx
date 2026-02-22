@@ -5,8 +5,6 @@ import {
   Eye,
   Lock,
   Globe,
-
-  GitCommit,
   Scale,
   Archive,
   Link as LinkIcon,
@@ -18,6 +16,7 @@ import { formatBytes } from "@/lib/github-utils";
 import { StarButton } from "@/components/repo/star-button";
 import { SidebarLanguages } from "@/components/repo/sidebar-languages";
 import { SidebarContributors } from "@/components/repo/sidebar-contributors";
+import { LatestCommitSection } from "@/components/repo/latest-commit-section";
 import type { ContributorAvatarsData } from "@/lib/repo-data-cache";
 
 interface LatestCommit {
@@ -148,43 +147,11 @@ export function RepoSidebar({
         </div>
 
         {/* Latest commit */}
-        {latestCommit && (
-          <div className="flex flex-col gap-2">
-            <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground/70 flex items-center gap-1.5">
-              <GitCommit className="w-3 h-3" />
-              Latest commit
-            </span>
-            <Link
-              href={`/${owner}/${repoName}/commits/${latestCommit.sha.slice(0, 7)}`}
-              className="group flex items-start gap-2 p-2 -mx-2 rounded-md hover:bg-muted/50 transition-colors"
-            >
-              {latestCommit.author?.avatarUrl ? (
-                <Image
-                  src={latestCommit.author.avatarUrl}
-                  alt={latestCommit.author.login}
-                  width={20}
-                  height={20}
-                  className="rounded-full shrink-0 mt-0.5"
-                />
-              ) : (
-                <div className="w-5 h-5 rounded-full bg-muted shrink-0 mt-0.5" />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-foreground/80 group-hover:text-foreground truncate transition-colors">
-                  {latestCommit.message.split("\n")[0]}
-                </p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[10px] text-muted-foreground/60 font-mono">
-                    {latestCommit.author?.login ?? "unknown"}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/40">
-                    <TimeAgo date={latestCommit.date} />
-                  </span>
-                </div>
-              </div>
-            </Link>
-          </div>
-        )}
+        <LatestCommitSection
+          owner={owner}
+          repoName={repoName}
+          initialCommit={latestCommit}
+        />
 
         {/* Topics */}
         {topics.length > 0 && (

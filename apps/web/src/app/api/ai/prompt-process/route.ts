@@ -3,7 +3,7 @@ import { streamText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import { getOctokitFromSession, getGitHubToken } from "@/lib/ai-auth";
 import type { Octokit } from "@octokit/rest";
-import { Daytona, type Sandbox } from "@daytonaio/sdk";
+import { Sandbox } from "e2b";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { after } from "next/server";
@@ -332,7 +332,6 @@ function buildSandboxTools(
 ) {
 	let sandbox: Sandbox | null = null;
 	let repoPath: string | null = null;
-	const daytona = new Daytona();
 
 	return {
 		startSandbox: tool({
@@ -347,15 +346,14 @@ function buildSandboxTools(
 			execute: async ({ branch }) => {
 				// Make idempotent — kill existing sandbox if any
 				if (sandbox) {
-					await sandbox.delete().catch(() => {});
+					await sandbox.kill().catch(() => {});
 					sandbox = null;
 					repoPath = null;
 				}
 
 				try {
-					sandbox = await daytona.create({
-						language: "typescript",
-						autoStopInterval: 10,
+					sandbox = await Sandbox.create({
+						timeoutMs: 10 * 60 * 1000,
 					});
 				} catch (e: any) {
 					sandbox = null;
@@ -364,35 +362,32 @@ function buildSandboxTools(
 
 				try {
 					// Git config
-					await sandbox.process.executeCommand(
+					await sandbox.commands.run(
 						`git config --global user.name "Ghost" && git config --global user.email "ghost@better-github.app"`,
 					);
 
-					repoPath = `/home/daytona/${repo}`;
-					// Clone via built-in git support
-					await sandbox.git.clone(
-						`https://github.com/${owner}/${repo}.git`,
-						repoPath,
-						branch || undefined,
-						undefined,
-						"x-access-token",
-						githubToken,
+					repoPath = `/home/user/${repo}`;
+					// Clone with token auth
+					await sandbox.commands.run(
+						`git clone ${branch ? `-b ${branch}` : ""} https://x-access-token:${githubToken}@github.com/${owner}/${repo}.git ${repoPath}`,
+						{ timeoutMs: 120_000 },
 					);
 
-					const infoResult = await sandbox.process.executeCommand(
+					const infoResult = await sandbox.commands.run(
 						'echo "__BRANCH__$(git rev-parse --abbrev-ref HEAD)__END__" && ls -la',
-						repoPath,
+						{ cwd: repoPath },
 					);
+					const output = infoResult.stdout;
 					const branchMatch =
-						infoResult.result.match(/__BRANCH__(.+?)__END__/);
+						output.match(/__BRANCH__(.+?)__END__/);
 					const defaultBranch = branchMatch?.[1]?.trim() || "main";
-					const files = infoResult.result.replace(
+					const files = output.replace(
 						/__BRANCH__.*__END__\n?/,
 						"",
 					);
 					return { success: true, repoPath, defaultBranch, files };
 				} catch (e: any) {
-					if (sandbox) await sandbox.delete().catch(() => {});
+					if (sandbox) await sandbox.kill().catch(() => {});
 					sandbox = null;
 					return { error: `Clone error: ${e.message}` };
 				}
@@ -416,18 +411,17 @@ function buildSandboxTools(
 					return {
 						error: "No sandbox running. Call startSandbox first.",
 					};
-				const result = await sandbox.process.executeCommand(
-					command,
-					repoPath,
-					undefined,
-					timeout ?? 120,
-				);
+				const result = await sandbox.commands.run(command, {
+					cwd: repoPath,
+					timeoutMs: (timeout ?? 120) * 1000,
+				});
+				const output = result.stdout + (result.stderr ? `\n${result.stderr}` : "");
 				const maxLen = 10000;
 				const stdout =
-					result.result.length > maxLen
-						? `...(truncated ${result.result.length - maxLen} chars)...\n` +
-							result.result.slice(-maxLen)
-						: result.result;
+					output.length > maxLen
+						? `...(truncated ${output.length - maxLen} chars)...\n` +
+							output.slice(-maxLen)
+						: output;
 				return { exitCode: result.exitCode, stdout };
 			},
 		}),
@@ -446,9 +440,9 @@ function buildSandboxTools(
 					? filePath
 					: `${repoPath}/${filePath}`;
 				try {
-					const buf = await sandbox.fs.downloadFile(absPath);
-					if (!buf) return { error: `File not found: ${absPath}` };
-					return { path: filePath, content: buf.toString() };
+					const content = await sandbox.files.read(absPath);
+					if (!content) return { error: `File not found: ${absPath}` };
+					return { path: filePath, content };
 				} catch (e: any) {
 					return { error: e.message || "Failed to read file" };
 				}
@@ -470,10 +464,7 @@ function buildSandboxTools(
 					? filePath
 					: `${repoPath}/${filePath}`;
 				try {
-					await sandbox.fs.uploadFile(
-						Buffer.from(content),
-						absPath,
-					);
+					await sandbox.files.write(absPath, content);
 					return { success: true, path: filePath };
 				} catch (e: any) {
 					return { error: e.message || "Failed to write file" };
@@ -487,7 +478,7 @@ function buildSandboxTools(
 			execute: async () => {
 				if (!sandbox) return { success: true };
 				try {
-					await sandbox.delete();
+					await sandbox.kill();
 					sandbox = null;
 					repoPath = null;
 					return { success: true };
@@ -499,7 +490,7 @@ function buildSandboxTools(
 
 		_cleanup: async () => {
 			if (sandbox) {
-				await sandbox.delete().catch(() => {});
+				await sandbox.kill().catch(() => {});
 				sandbox = null;
 			}
 		},

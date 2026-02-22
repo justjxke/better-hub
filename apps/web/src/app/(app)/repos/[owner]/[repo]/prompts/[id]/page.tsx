@@ -1,6 +1,8 @@
-import { getPromptRequest } from "@/lib/prompt-request-store";
+import { getPromptRequest, listPromptRequestComments } from "@/lib/prompt-request-store";
 import { PromptDetail } from "@/components/prompt-request/prompt-detail";
 import { notFound } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 export default async function PromptDetailPage({
 	params,
@@ -8,11 +10,27 @@ export default async function PromptDetailPage({
 	params: Promise<{ owner: string; repo: string; id: string }>;
 }) {
 	const { owner, repo, id } = await params;
-	const promptRequest = await getPromptRequest(id);
+	const [promptRequest, comments, session] = await Promise.all([
+		getPromptRequest(id),
+		listPromptRequestComments(id),
+		auth.api.getSession({ headers: await headers() }),
+	]);
 
 	if (!promptRequest) {
 		notFound();
 	}
 
-	return <PromptDetail owner={owner} repo={repo} promptRequest={promptRequest} />;
+	const currentUser = session?.user
+		? { id: session.user.id, name: session.user.name, image: session.user.image ?? "" }
+		: null;
+
+	return (
+		<PromptDetail
+			owner={owner}
+			repo={repo}
+			promptRequest={promptRequest}
+			comments={comments}
+			currentUser={currentUser}
+		/>
+	);
 }

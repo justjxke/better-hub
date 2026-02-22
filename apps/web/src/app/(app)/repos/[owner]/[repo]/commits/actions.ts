@@ -1,6 +1,6 @@
 "use server";
 
-import { getRepoCommits } from "@/lib/github";
+import { getRepoCommits, fetchAndCacheRepoPageData } from "@/lib/github";
 
 export async function fetchCommitsByDate(
 	owner: string,
@@ -18,4 +18,9 @@ export async function fetchCommitsByDate(
 		since || undefined,
 		until || undefined,
 	);
+}
+
+export async function fetchLatestCommit(owner: string, repo: string) {
+	const data = await fetchAndCacheRepoPageData(owner, repo);
+	return data?.latestCommit ?? null;
 }

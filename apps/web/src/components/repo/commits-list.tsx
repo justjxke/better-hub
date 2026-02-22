@@ -7,6 +7,8 @@ import { GitBranch, ChevronDown, Search, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TimeAgo } from "@/components/ui/time-ago";
 import { fetchCommitsByDate } from "@/app/(app)/repos/[owner]/[repo]/commits/actions";
+import { useMutationSubscription } from "@/hooks/use-mutation-subscription";
+import { isRepoEvent, type MutationEvent } from "@/lib/mutation-events";
 
 type Commit = {
 	sha: string;
@@ -188,6 +190,28 @@ export function CommitsList({ owner, repo, commits, defaultBranch, branches }: C
 	const [isPending, startTransition] = useTransition();
 
 	const hasDateFilter = since !== "" || until !== "";
+
+	useMutationSubscription(
+		[
+			"pr:merged",
+			"pr:suggestion-committed",
+			"pr:file-committed",
+			"repo:file-committed",
+		],
+		(event: MutationEvent) => {
+			if (!isRepoEvent(event, owner, repo)) return;
+			startTransition(async () => {
+				const result = await fetchCommitsByDate(
+					owner,
+					repo,
+					since ? new Date(since).toISOString() : undefined,
+					until ? new Date(until + "T23:59:59").toISOString() : undefined,
+					currentBranch,
+				);
+				setDisplayedCommits(result as Commit[]);
+			});
+		},
+	);
 
 	const fetchCommits = (branch: string, newSince?: string, newUntil?: string) => {
 		startTransition(async () => {
