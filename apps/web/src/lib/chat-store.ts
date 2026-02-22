@@ -6,6 +6,7 @@ export interface ChatConversation {
 	chatType: string;
 	contextKey: string;
 	title: string | null;
+	activeStreamId: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -24,6 +25,7 @@ function toConversation(row: {
 	chatType: string;
 	contextKey: string;
 	title: string | null;
+	activeStreamId: string | null;
 	createdAt: string;
 	updatedAt: string;
 }): ChatConversation {
@@ -33,6 +35,7 @@ function toConversation(row: {
 		chatType: row.chatType,
 		contextKey: row.contextKey,
 		title: row.title,
+		activeStreamId: row.activeStreamId,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	};
@@ -169,6 +172,62 @@ export async function listGhostConversations(
 		take: limit,
 	});
 	return rows.map(toConversation);
+}
+
+export async function getConversationById(
+	conversationId: string,
+): Promise<ChatConversation | null> {
+	const row = await prisma.chatConversation.findUnique({
+		where: { id: conversationId },
+	});
+	if (!row) return null;
+	return toConversation(row);
+}
+
+export async function updateActiveStreamId(
+	conversationId: string,
+	streamId: string | null,
+): Promise<void> {
+	await prisma.chatConversation.update({
+		where: { id: conversationId },
+		data: { activeStreamId: streamId },
+	});
+}
+
+export async function saveMessages(
+	conversationId: string,
+	messages: { id: string; role: string; content: string }[],
+): Promise<void> {
+	const now = new Date().toISOString();
+
+	for (const message of messages) {
+		await prisma.chatMessage.upsert({
+			where: { id: message.id },
+			create: {
+				id: message.id,
+				conversationId,
+				role: message.role,
+				content: message.content,
+				createdAt: now,
+			},
+			update: { content: message.content },
+		});
+	}
+
+	if (messages.length > 0) {
+		await prisma.chatConversation.update({
+			where: { id: conversationId },
+			data: { updatedAt: now },
+		});
+
+		const firstUserMsg = messages.find((m) => m.role === "user");
+		if (firstUserMsg) {
+			await prisma.chatConversation.updateMany({
+				where: { id: conversationId, title: null },
+				data: { title: firstUserMsg.content.slice(0, 100) },
+			});
+		}
+	}
 }
 
 // ─── Ghost Tabs ────────────────────────────────────────────────────────────

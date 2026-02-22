@@ -116,13 +116,14 @@ model GithubSyncJob {
 }
 
 model ChatConversation {
-  id         String  @id
-  userId     String
-  chatType   String
-  contextKey String
-  title      String?
-  createdAt  String
-  updatedAt  String
+  id             String  @id
+  userId         String
+  chatType       String
+  contextKey     String
+  title          String?
+  activeStreamId String?
+  createdAt      String
+  updatedAt      String
 
   messages ChatMessage[]
 
