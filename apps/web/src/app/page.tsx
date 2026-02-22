@@ -44,58 +44,57 @@ export default async function HomePage() {
 				/>
 			</div>
 
+			<style>{`
+				@keyframes heroFadeUp {
+					from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+					to { opacity: 1; transform: translateY(0); filter: blur(0px); }
+				}
+				.hero-in {
+					opacity: 0;
+					animation: heroFadeUp 0.6s ease-out forwards;
+				}
+			`}</style>
+
+			{/* Logo — top left */}
+			<div
+				className="hero-in absolute top-6 left-6 z-30 flex items-center gap-1"
+				style={{ animationDelay: "0.2s" }}
+			>
+				<svg
+					className="size-5"
+					viewBox="0 0 65 65"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
+				>
+					<path
+						d={LOGO_SVG_PATH}
+						fill="url(#paint0_hero)"
+					/>
+					<defs>
+						<linearGradient
+							id="paint0_hero"
+							x1="34.5313"
+							y1="9.13989"
+							x2="34.5313"
+							y2="55.8601"
+							gradientUnits="userSpaceOnUse"
+						>
+							<stop stopColor="white" />
+							<stop
+								offset="1"
+								stopColor="#999999"
+							/>
+						</linearGradient>
+					</defs>
+				</svg>
+				<span className="text-sm tracking-tight text-foreground">
+					BETTER-HUB.
+				</span>
+			</div>
+
 			{/* Content — centered on screen */}
 			<div className="relative z-20 min-h-screen flex items-center justify-center px-6">
-				<style>{`
-					@keyframes heroFadeUp {
-						from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
-						to { opacity: 1; transform: translateY(0); filter: blur(0px); }
-					}
-					.hero-in {
-						opacity: 0;
-						animation: heroFadeUp 0.6s ease-out forwards;
-					}
-				`}</style>
 				<div className="w-full max-w-md">
-					{/* Logo */}
-					<div
-						className="hero-in flex items-center gap-1"
-						style={{ animationDelay: "0.2s" }}
-					>
-						<svg
-							width="22"
-							height="22"
-							className="size-8"
-							viewBox="0 0 65 65"
-							fill="none"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								d={LOGO_SVG_PATH}
-								fill="url(#paint0_hero)"
-							/>
-							<defs>
-								<linearGradient
-									id="paint0_hero"
-									x1="34.5313"
-									y1="9.13989"
-									x2="34.5313"
-									y2="55.8601"
-									gradientUnits="userSpaceOnUse"
-								>
-									<stop stopColor="white" />
-									<stop
-										offset="1"
-										stopColor="#999999"
-									/>
-								</linearGradient>
-							</defs>
-						</svg>
-						<span className="text-2xl tracking-tight text-foreground">
-							BETTER-HUB.
-						</span>
-					</div>
-
 					{/* Heading */}
 					<h1
 						className="hero-in text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-foreground leading-[1.1] mb-2"

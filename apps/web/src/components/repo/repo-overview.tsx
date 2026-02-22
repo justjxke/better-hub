@@ -895,113 +895,6 @@ function HighlightedActivityTicker({ items }: { items: HotItem[] }) {
 	);
 }
 
-function ReadmeSkeleton() {
-	return (
-		<div className="rounded-md border border-border/40 overflow-hidden">
-			<div className="px-6 py-5 space-y-4 animate-pulse">
-				<div className="h-7 w-2/5 bg-muted rounded" />
-				<div className="space-y-2.5">
-					<div className="h-4 w-full bg-muted rounded" />
-					<div className="h-4 w-11/12 bg-muted rounded" />
-					<div className="h-4 w-4/5 bg-muted rounded" />
-				</div>
-				<div className="space-y-2.5 pt-2">
-					<div className="h-4 w-full bg-muted rounded" />
-					<div className="h-4 w-3/4 bg-muted rounded" />
-				</div>
-				<div className="h-24 w-full bg-muted/60 rounded-md" />
-				<div className="space-y-2.5">
-					<div className="h-4 w-full bg-muted rounded" />
-					<div className="h-4 w-5/6 bg-muted rounded" />
-					<div className="h-4 w-2/3 bg-muted rounded" />
-				</div>
-			</div>
-		</div>
-	);
-}
-
-function CIStatusSkeleton() {
-	return (
-		<div className="rounded-md p-4 animate-pulse">
-			<div className="flex items-center gap-3">
-				<div className="w-5 h-5 rounded-full bg-muted" />
-				<div className="h-3.5 w-48 bg-muted rounded" />
-			</div>
-		</div>
-	);
-}
-
-function ActivitySkeleton() {
-	return (
-		<div className="p-4 flex flex-col lg:min-h-0 animate-pulse">
-			<div className="flex items-baseline gap-2 mb-4">
-				<div className="h-4 w-28 bg-muted rounded" />
-			</div>
-			{/* Commit graph skeleton */}
-			<div className="mb-3 pb-3 border-b border-border/20">
-				<div className="flex items-center justify-between mb-2">
-					<div className="h-2.5 w-24 bg-muted/60 rounded" />
-					<div className="h-2.5 w-14 bg-muted/60 rounded" />
-				</div>
-				<div className="flex items-end gap-[3px]" style={{ height: 36 }}>
-					{[
-						8, 14, 6, 22, 18, 10, 28, 12, 20, 8, 16, 24, 10, 14,
-						30, 18,
-					].map((h, i) => (
-						<div
-							key={i}
-							className="flex-1 bg-muted rounded-t-[2px] rounded-b-[1px]"
-							style={{ height: h }}
-						/>
-					))}
-				</div>
-			</div>
-			{/* Event list skeleton */}
-			<div className="space-y-2">
-				{[0, 1, 2, 3, 4, 5].map((j) => (
-					<div key={j} className="flex items-start gap-2 py-1.5">
-						<div className="w-4 h-4 rounded-full bg-muted shrink-0 mt-0.5" />
-						<div className="flex-1 space-y-1.5">
-							<div
-								className="h-3 bg-muted rounded"
-								style={{ width: `${85 - j * 7}%` }}
-							/>
-							<div className="h-2.5 w-24 bg-muted/60 rounded" />
-						</div>
-						<div className="h-2.5 w-8 bg-muted/40 rounded shrink-0 mt-0.5" />
-					</div>
-				))}
-			</div>
-		</div>
-	);
-}
-
-function ListSkeleton({ title }: { title: string }) {
-	return (
-		<div className="p-4 flex flex-col lg:min-h-0 animate-pulse">
-			<div className="flex items-baseline gap-2 mb-4">
-				<h3 className="text-sm font-medium text-foreground">{title}</h3>
-			</div>
-			<div className="space-y-1">
-				{[0, 1, 2, 3, 4].map((j) => (
-					<div key={j} className="flex items-start gap-2.5 py-2">
-						<div className="w-3.5 h-3.5 rounded bg-muted shrink-0 mt-0.5" />
-						<div className="flex-1 space-y-1.5">
-							<div
-								className="h-3 bg-muted rounded"
-								style={{ width: `${80 - j * 10}%` }}
-							/>
-							<div className="flex items-center gap-1">
-								<div className="w-3.5 h-3.5 rounded-full bg-muted/60" />
-								<div className="h-2.5 w-16 bg-muted/60 rounded" />
-							</div>
-						</div>
-					</div>
-				))}
-			</div>
-		</div>
-	);
-}
 
 export interface RepoOverviewProps {
 	owner: string;
@@ -1039,7 +932,7 @@ export function RepoOverview({
 	const base = `/${owner}/${repo}`;
 	const branch = defaultBranch ?? "main";
 
-	const { data: openPRs = [], isPending: prsLoading } = useQuery({
+	const { data: openPRs = [] } = useQuery({
 		queryKey: ["overview-prs", owner, repo],
 		queryFn: () => fetchOverviewPRs(owner, repo),
 		initialData: initialPRs ?? undefined,
@@ -1049,7 +942,7 @@ export function RepoOverview({
 		refetchOnMount: "always",
 	});
 
-	const { data: openIssues = [], isPending: issuesLoading } = useQuery({
+	const { data: openIssues = [] } = useQuery({
 		queryKey: ["overview-issues", owner, repo],
 		queryFn: () => fetchOverviewIssues(owner, repo),
 		initialData: initialIssues ?? undefined,
@@ -1059,7 +952,7 @@ export function RepoOverview({
 		refetchOnMount: "always",
 	});
 
-	const { data: commitActivity, isPending: activityGraphLoading } = useQuery({
+	const { data: commitActivity } = useQuery({
 		queryKey: ["overview-commit-activity", owner, repo],
 		queryFn: () => fetchOverviewCommitActivity(owner, repo),
 		initialData: initialCommitActivity ?? undefined,
@@ -1069,7 +962,7 @@ export function RepoOverview({
 		refetchOnMount: "always",
 	});
 
-	const { data: repoEvents, isPending: eventsLoading } = useQuery({
+	const { data: repoEvents } = useQuery({
 		queryKey: ["overview-events", owner, repo],
 		queryFn: () => fetchOverviewEvents(owner, repo),
 		initialData: initialEvents ?? undefined,
@@ -1079,7 +972,7 @@ export function RepoOverview({
 		refetchOnMount: "always",
 	});
 
-	const { data: ciStatus, isPending: ciLoading } = useQuery({
+	const { data: ciStatus } = useQuery({
 		queryKey: ["overview-ci", owner, repo, branch],
 		queryFn: () => fetchOverviewCIStatus(owner, repo, branch),
 		initialData: initialCIStatus ?? undefined,
@@ -1100,22 +993,19 @@ export function RepoOverview({
 	});
 
 	const hotItems = isMaintainer ? computeHotItems(openPRs, openIssues, base) : [];
-	const activityLoading = eventsLoading && !repoEvents;
 
 	if (isMaintainer) {
 		return (
 			<div className="flex flex-col gap-4 lg:flex-1 lg:min-h-0 pb-4">
 				<div className="shrink-0 flex flex-col gap-4">
-					{ciLoading && !ciStatus ? (
-						<CIStatusSkeleton />
-					) : ciStatus && ciStatus.total > 0 ? (
+					{ciStatus && ciStatus.total > 0 && (
 						<CIStatusCard
 							ciStatus={ciStatus}
 							owner={owner}
 							repo={repo}
 							defaultBranch={branch}
 						/>
-					) : null}
+					)}
 					{pinnedItems && pinnedItems.length > 0 && (
 						<PinnedItemsSection
 							items={pinnedItems}
@@ -1131,37 +1021,27 @@ export function RepoOverview({
 				<div
 					className={cn(
 						"grid grid-cols-1 gap-4 lg:flex-1 lg:min-h-0 lg:grid-rows-1",
-						openIssues.length > 0 || issuesLoading
+						openIssues.length > 0
 							? "lg:grid-cols-3"
 							: "lg:grid-cols-2",
 					)}
 				>
-					{activityLoading ? (
-						<ActivitySkeleton />
-					) : (
-						<ActivityFeed
-							repoEvents={repoEvents ?? []}
-							commitActivity={commitActivity}
-							base={base}
-						/>
-					)}
+					<ActivityFeed
+						repoEvents={repoEvents ?? []}
+						commitActivity={commitActivity}
+						base={base}
+					/>
 
-					{prsLoading && openPRs.length === 0 ? (
-						<ListSkeleton title="Open PRs" />
-					) : (
-						<SortableList
-							title="Open PRs"
-							totalCount={openPRCount ?? openPRs.length}
-							items={openPRs}
-							type="pr"
-							base={base}
-							viewAllHref={`${base}/pulls`}
-						/>
-					)}
+					<SortableList
+						title="Open PRs"
+						totalCount={openPRCount ?? openPRs.length}
+						items={openPRs}
+						type="pr"
+						base={base}
+						viewAllHref={`${base}/pulls`}
+					/>
 
-					{issuesLoading && openIssues.length === 0 ? (
-						<ListSkeleton title="Open Issues" />
-					) : openIssues.length > 0 ? (
+					{openIssues.length > 0 && (
 						<SortableList
 							title="Open Issues"
 							totalCount={
@@ -1172,13 +1052,13 @@ export function RepoOverview({
 							base={base}
 							viewAllHref={`${base}/issues`}
 						/>
-					) : null}
+					)}
 				</div>
 			</div>
 		);
 	}
 
-	const { data: readmeHtml, isLoading: readmeLoading } = useReadme(
+	const { data: readmeHtml } = useReadme(
 		owner,
 		repo,
 		branch,
@@ -1187,10 +1067,7 @@ export function RepoOverview({
 
 	return (
 		<div className="space-y-4 pb-4">
-			{/* README */}
-			{readmeLoading ? (
-				<ReadmeSkeleton />
-			) : readmeHtml ? (
+			{readmeHtml && (
 				<div className="rounded-md border border-border/40 overflow-hidden">
 					<div className="px-6 py-5">
 						<MarkdownCopyHandler>
@@ -1203,7 +1080,7 @@ export function RepoOverview({
 						</MarkdownCopyHandler>
 					</div>
 				</div>
-			) : null}
+			)}
 		</div>
 	);
 }
