@@ -1,4 +1,4 @@
-import { createResumableStreamContext } from "resumable-stream";
+import { createResumableStreamContext } from "resumable-stream/ioredis";
 import { after } from "next/server";
 
 export const streamContext = createResumableStreamContext({

@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
 	devIndicators: false,
-	serverExternalPackages: ["@prisma/client", "resumable-stream"],
+	serverExternalPackages: ["@prisma/client", "resumable-stream", "ioredis"],
 	experimental: {
 		staleTimes: {
 			dynamic: 300,
