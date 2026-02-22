@@ -48,7 +48,11 @@ import { BUILT_IN_THEMES } from "@/lib/code-themes/built-in";
 import { useMutationEvents } from "@/components/shared/mutation-event-provider";
 import { useMutationSubscription } from "@/hooks/use-mutation-subscription";
 import type { MutationEvent } from "@/lib/mutation-events";
-import { pinToOverview, unpinFromOverview, getPinnedUrlsForRepo } from "@/app/(app)/repos/[owner]/[repo]/pin-actions";
+import {
+	pinToOverview,
+	unpinFromOverview,
+	getPinnedUrlsForRepo,
+} from "@/app/(app)/repos/[owner]/[repo]/pin-actions";
 
 interface SearchRepo {
 	id: number;
@@ -315,7 +319,10 @@ export function CommandMenu() {
 		let cancelled = false;
 		(async () => {
 			try {
-				const urls = await getPinnedUrlsForRepo(repoContext[0], repoContext[1]);
+				const urls = await getPinnedUrlsForRepo(
+					repoContext[0],
+					repoContext[1],
+				);
 				if (!cancelled) {
 					pinnedRepoRef.current = repoKey;
 					setPinnedUrls(urls);
@@ -331,17 +338,24 @@ export function CommandMenu() {
 	}, [open, repoContext]);
 
 	// Subscribe to pin events to keep pinnedUrls in sync
-	useMutationSubscription(
-		["pin:added", "pin:removed"],
-		(event: MutationEvent) => {
-			if (!repoContext) return;
-			if (event.type === "pin:added" && event.owner === repoContext[0] && event.repo === repoContext[1]) {
-				setPinnedUrls((prev) => prev.includes(event.url) ? prev : [...prev, event.url]);
-			} else if (event.type === "pin:removed" && event.owner === repoContext[0] && event.repo === repoContext[1]) {
-				setPinnedUrls((prev) => prev.filter((u) => u !== event.url));
-			}
-		},
-	);
+	useMutationSubscription(["pin:added", "pin:removed"], (event: MutationEvent) => {
+		if (!repoContext) return;
+		if (
+			event.type === "pin:added" &&
+			event.owner === repoContext[0] &&
+			event.repo === repoContext[1]
+		) {
+			setPinnedUrls((prev) =>
+				prev.includes(event.url) ? prev : [...prev, event.url],
+			);
+		} else if (
+			event.type === "pin:removed" &&
+			event.owner === repoContext[0] &&
+			event.repo === repoContext[1]
+		) {
+			setPinnedUrls((prev) => prev.filter((u) => u !== event.url));
+		}
+	});
 
 	useEffect(() => {
 		setMounted(true);
@@ -451,11 +465,11 @@ export function CommandMenu() {
 				setOpen(true);
 			}
 			if (e.key === "t" && !e.metaKey && !e.ctrlKey && !e.altKey) {
-				const target = e.target as HTMLElement;
+				const active = document.activeElement as HTMLElement | null;
 				if (
-					target.tagName === "INPUT" ||
-					target.tagName === "TEXTAREA" ||
-					target.isContentEditable
+					active?.tagName === "INPUT" ||
+					active?.tagName === "TEXTAREA" ||
+					active?.isContentEditable
 				)
 					return;
 				if (!matchRepoFromPathname(window.location.pathname)) return;
@@ -654,21 +668,70 @@ export function CommandMenu() {
 								? "Unpin this page"
 								: "Pin this page",
 							description: `${pinnedUrls.includes(pathname) ? "Remove from" : "Add to"} repo overview`,
-							keywords: ["pin", "bookmark", "save", "unpin"],
+							keywords: [
+								"pin",
+								"bookmark",
+								"save",
+								"unpin",
+							],
 							action: () => {
 								const [o, r] = repoContext;
 								const base = `/${o}/${r}`;
-								const isPinned = pinnedUrls.includes(pathname);
+								const isPinned =
+									pinnedUrls.includes(
+										pathname,
+									);
 								if (isPinned) {
-									setPinnedUrls((prev) => prev.filter((u) => u !== pathname));
-									unpinFromOverview(o, r, pathname);
-									emit({ type: "pin:removed", owner: o, repo: r, url: pathname });
+									setPinnedUrls((prev) =>
+										prev.filter(
+											(u) =>
+												u !==
+												pathname,
+										),
+									);
+									unpinFromOverview(
+										o,
+										r,
+										pathname,
+									);
+									emit({
+										type: "pin:removed",
+										owner: o,
+										repo: r,
+										url: pathname,
+									});
 								} else {
-									const title = derivePinTitle(pathname, base, o, r);
-									const itemType = derivePinItemType(pathname, base);
-									setPinnedUrls((prev) => [...prev, pathname]);
-									pinToOverview(o, r, pathname, title, itemType);
-									emit({ type: "pin:added", owner: o, repo: r, url: pathname, title, itemType });
+									const title =
+										derivePinTitle(
+											pathname,
+											base,
+											o,
+											r,
+										);
+									const itemType =
+										derivePinItemType(
+											pathname,
+											base,
+										);
+									setPinnedUrls((prev) => [
+										...prev,
+										pathname,
+									]);
+									pinToOverview(
+										o,
+										r,
+										pathname,
+										title,
+										itemType,
+									);
+									emit({
+										type: "pin:added",
+										owner: o,
+										repo: r,
+										url: pathname,
+										title,
+										itemType,
+									});
 								}
 							},
 							icon: Pin,
@@ -3158,10 +3221,9 @@ function RepoItem({
 						<span
 							className="w-2 h-2 rounded-full"
 							style={{
-								backgroundColor:
-									getLanguageColor(
-										repo.language,
-									),
+								backgroundColor: getLanguageColor(
+									repo.language,
+								),
 							}}
 						/>
 						{repo.language}

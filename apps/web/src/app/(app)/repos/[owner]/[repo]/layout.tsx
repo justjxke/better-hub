@@ -140,6 +140,7 @@ export default async function RepoLayout({
 			<RepoLayoutWrapper
 				owner={owner}
 				repo={repoName}
+				ownerType={repoData.owner.type}
 				sidebar={
 					<RepoSidebar
 						owner={owner}

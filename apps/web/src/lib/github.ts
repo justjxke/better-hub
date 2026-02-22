@@ -1,7 +1,7 @@
 import { Octokit } from "@octokit/rest";
 import { headers } from "next/headers";
 import { cache } from "react";
-import { $Session, auth, getServerSession } from "./auth";
+import { $Session, getServerSession } from "./auth";
 import {
 	claimDueGithubSyncJobs,
 	deleteGithubCacheByPrefix,
@@ -13,7 +13,6 @@ import {
 	upsertGithubCacheEntry,
 } from "./github-sync-store";
 import { redis } from "./redis";
-import { all } from "better-all";
 import { computeContributorScore } from "./contributor-score";
 import { getCachedAuthorDossier, setCachedAuthorDossier } from "./repo-data-cache";
 
