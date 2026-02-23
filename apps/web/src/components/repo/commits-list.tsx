@@ -1,16 +1,42 @@
 "use client";
 
-import { useState, useTransition, useMemo, useRef, useEffect } from "react";
+import { useState, useTransition, useMemo, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { GitBranch, ChevronDown, Search, Check, X, MoreHorizontal } from "lucide-react";
+import {
+	GitBranch,
+	ChevronDown,
+	Search,
+	Check,
+	X,
+	MoreHorizontal,
+	Loader2,
+	Expand,
+	Maximize2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TimeAgo } from "@/components/ui/time-ago";
-import { fetchCommitsByDate } from "@/app/(app)/repos/[owner]/[repo]/commits/actions";
+import { ResizeHandle } from "@/components/ui/resize-handle";
+import {
+	fetchCommitsByDate,
+	fetchCommitDetail,
+	type CommitDetailData,
+} from "@/app/(app)/repos/[owner]/[repo]/commits/actions";
 import { useMutationSubscription } from "@/hooks/use-mutation-subscription";
 import { isRepoEvent, type MutationEvent } from "@/lib/mutation-events";
 import { parseCoAuthors, getCommitBody, getInitials, type CoAuthor } from "@/lib/commit-utils";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-is-mobile";
+import { CommitDetail } from "@/components/repo/commit-detail";
+import type { SyntaxToken } from "@/lib/shiki";
 
+// Constants
+const SHEET_WIDTH_COOKIE = "commit_sheet_width";
+const DEFAULT_SHEET_WIDTH = 1024;
+const MIN_SHEET_WIDTH = 400;
+const MAX_SHEET_WIDTH_RATIO = 0.9;
+
+// Types
 type Commit = {
 	sha: string;
 	commit: {
@@ -38,6 +64,25 @@ interface CommitsListProps {
 	branches: { name: string }[];
 }
 
+// Utility functions
+function groupByDate(commits: Commit[]) {
+	const groups: Record<string, Commit[]> = {};
+	for (const commit of commits) {
+		const date = commit.commit.author?.date;
+		const key = date
+			? new Date(date).toLocaleDateString("en-US", {
+					month: "long",
+					day: "numeric",
+					year: "numeric",
+				})
+			: "Unknown date";
+		if (!groups[key]) groups[key] = [];
+		groups[key].push(commit);
+	}
+	return Object.entries(groups);
+}
+
+// Sub-components
 function BranchPicker({
 	branches,
 	currentBranch,
@@ -164,23 +209,6 @@ function BranchPicker({
 	);
 }
 
-function groupByDate(commits: Commit[]) {
-	const groups: Record<string, Commit[]> = {};
-	for (const commit of commits) {
-		const date = commit.commit.author?.date;
-		const key = date
-			? new Date(date).toLocaleDateString("en-US", {
-					month: "long",
-					day: "numeric",
-					year: "numeric",
-				})
-			: "Unknown date";
-		if (!groups[key]) groups[key] = [];
-		groups[key].push(commit);
-	}
-	return Object.entries(groups);
-}
-
 function CoAuthorBadge({ coAuthor, size = 20 }: { coAuthor: CoAuthor; size?: number }) {
 	const initials = getInitials(coAuthor.name);
 	return (
@@ -196,18 +224,484 @@ function CoAuthorBadge({ coAuthor, size = 20 }: { coAuthor: CoAuthor; size?: num
 	);
 }
 
+function CommitsToolbar({
+	branches,
+	currentBranch,
+	defaultBranch,
+	search,
+	since,
+	until,
+	hasDateFilter,
+	onBranchChange,
+	onSearchChange,
+	onSinceChange,
+	onUntilChange,
+	onClearDates,
+}: {
+	branches: { name: string }[];
+	currentBranch: string;
+	defaultBranch: string;
+	search: string;
+	since: string;
+	until: string;
+	hasDateFilter: boolean;
+	onBranchChange: (branch: string) => void;
+	onSearchChange: (search: string) => void;
+	onSinceChange: (since: string) => void;
+	onUntilChange: (until: string) => void;
+	onClearDates: () => void;
+}) {
+	return (
+		<div className="flex items-center gap-2">
+			<BranchPicker
+				branches={branches}
+				currentBranch={currentBranch}
+				defaultBranch={defaultBranch}
+				onChange={onBranchChange}
+			/>
+			<div className="relative flex-1">
+				<input
+					type="text"
+					placeholder="Search commits..."
+					value={search}
+					onChange={(e) => onSearchChange(e.target.value)}
+					className="w-full rounded-md border border-border bg-background px-3 py-2 pl-9 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+				/>
+				<svg
+					className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50"
+					width="14"
+					height="14"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
+					<circle cx="11" cy="11" r="8" />
+					<line x1="21" y1="21" x2="16.65" y2="16.65" />
+				</svg>
+			</div>
+			<input
+				type="date"
+				value={since}
+				onChange={(e) => onSinceChange(e.target.value)}
+				title="Since date"
+				className="rounded-md border border-border bg-background px-2 py-2 font-mono text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+			/>
+			<input
+				type="date"
+				value={until}
+				onChange={(e) => onUntilChange(e.target.value)}
+				title="Until date"
+				className="rounded-md border border-border bg-background px-2 py-2 font-mono text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+			/>
+			{hasDateFilter && (
+				<button
+					onClick={onClearDates}
+					title="Clear date filters"
+					className="rounded-md border border-border bg-background px-2 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
+				>
+					✕
+				</button>
+			)}
+		</div>
+	);
+}
+
+function CommitRow({
+	commit,
+	owner,
+	repo,
+	isFirst,
+	isExpanded,
+	copiedSha,
+	isMobile,
+	onCommitClick,
+	onToggleExpand,
+	onCopySha,
+}: {
+	commit: Commit;
+	owner: string;
+	repo: string;
+	isFirst: boolean;
+	isExpanded: boolean;
+	copiedSha: string | null;
+	isMobile: boolean | undefined;
+	onCommitClick: (sha: string) => void;
+	onToggleExpand: (sha: string) => void;
+	onCopySha: (sha: string) => void;
+}) {
+	const firstLine = commit.commit.message.split("\n")[0];
+	const login = commit.author?.login;
+	const avatarUrl = commit.author?.avatar_url;
+	const shortSha = commit.sha.slice(0, 7);
+	const coAuthors = parseCoAuthors(commit.commit.message);
+	const body = getCommitBody(commit.commit.message);
+
+	const titleClassName =
+		"text-sm font-medium text-foreground hover:text-info line-clamp-1 text-left";
+
+	return (
+		<div className={cn(!isFirst && "border-t border-border")}>
+			<div className="flex items-start gap-3 px-4 py-3">
+				{/* Avatar group */}
+				<div className="mt-0.5 flex items-center -space-x-1 shrink-0">
+					{avatarUrl ? (
+						<Link
+							href={`/${login}`}
+							className="shrink-0 relative z-10"
+						>
+							<Image
+								src={avatarUrl}
+								alt={login ?? ""}
+								width={24}
+								height={24}
+								className="rounded-full border border-background"
+							/>
+						</Link>
+					) : (
+						<div className="h-6 w-6 shrink-0 rounded-full bg-muted border border-background relative z-10" />
+					)}
+					{coAuthors.slice(0, 3).map((ca, ci) => (
+						<div
+							key={ca.email}
+							className="relative"
+							style={{ zIndex: 9 - ci }}
+						>
+							<CoAuthorBadge coAuthor={ca} size={20} />
+						</div>
+					))}
+				</div>
+
+				{/* Content */}
+				<div className="min-w-0 flex-1">
+					<div className="flex items-center gap-1">
+						{isMobile === undefined || isMobile ? (
+							<Link
+								href={`/${owner}/${repo}/commits/${commit.sha}`}
+								className={titleClassName}
+							>
+								{firstLine}
+							</Link>
+						) : (
+							<button
+								onClick={() =>
+									onCommitClick(commit.sha)
+								}
+								className={cn(
+									titleClassName,
+									"cursor-pointer",
+								)}
+							>
+								{firstLine}
+							</button>
+						)}
+						{body && (
+							<button
+								onClick={() =>
+									onToggleExpand(commit.sha)
+								}
+								title={
+									isExpanded
+										? "Collapse"
+										: "Expand commit message"
+								}
+								className="shrink-0 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
+							>
+								<MoreHorizontal className="w-3.5 h-3.5" />
+							</button>
+						)}
+					</div>
+					<p className="mt-0.5 text-xs text-muted-foreground">
+						{login ? (
+							<Link
+								href={`/${login}`}
+								className="hover:underline"
+							>
+								{login}
+							</Link>
+						) : (
+							(commit.commit.author?.name ?? "Unknown")
+						)}
+						{coAuthors.length > 0 && (
+							<>
+								{" & "}
+								{coAuthors.map((ca, ci) => (
+									<span key={ca.email}>
+										{ci > 0 && ", "}
+										{ca.name}
+									</span>
+								))}
+							</>
+						)}
+						{commit.commit.author?.date && (
+							<>
+								{" · "}
+								<TimeAgo
+									date={
+										commit.commit.author
+											.date
+									}
+								/>
+							</>
+						)}
+					</p>
+				</div>
+
+				{/* SHA button */}
+				<button
+					onClick={() => onCopySha(commit.sha)}
+					title="Copy full SHA"
+					className="mt-0.5 shrink-0 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs text-muted-foreground transition-colors hover:bg-muted"
+				>
+					{copiedSha === commit.sha ? "Copied!" : shortSha}
+				</button>
+			</div>
+
+			{/* Expanded body */}
+			{isExpanded && body && (
+				<div className="px-4 pb-3 pl-[52px]">
+					<pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto border-l-2 border-border pl-3">
+						{body}
+					</pre>
+				</div>
+			)}
+		</div>
+	);
+}
+
+function CommitDateGroup({
+	date,
+	commits,
+	owner,
+	repo,
+	expandedShas,
+	copiedSha,
+	isMobile,
+	onCommitClick,
+	onToggleExpand,
+	onCopySha,
+}: {
+	date: string;
+	commits: Commit[];
+	owner: string;
+	repo: string;
+	expandedShas: Set<string>;
+	copiedSha: string | null;
+	isMobile: boolean | undefined;
+	onCommitClick: (sha: string) => void;
+	onToggleExpand: (sha: string) => void;
+	onCopySha: (sha: string) => void;
+}) {
+	return (
+		<div>
+			<p className="mb-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70">
+				Commits on {date}
+			</p>
+			<div className="overflow-hidden rounded-md border border-border">
+				{commits.map((commit, i) => (
+					<CommitRow
+						key={commit.sha}
+						commit={commit}
+						owner={owner}
+						repo={repo}
+						isFirst={i === 0}
+						isExpanded={expandedShas.has(commit.sha)}
+						copiedSha={copiedSha}
+						isMobile={isMobile}
+						onCommitClick={onCommitClick}
+						onToggleExpand={onToggleExpand}
+						onCopySha={onCopySha}
+					/>
+				))}
+			</div>
+		</div>
+	);
+}
+
+function CommitDetailSheet({
+	open,
+	onOpenChange,
+	owner,
+	repo,
+	selectedCommitSha,
+	commitDetail,
+	highlightData,
+	isLoading,
+	sheetWidth,
+	isResizing,
+	onResize,
+	onResizeEnd,
+	onResetWidth,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	owner: string;
+	repo: string;
+	selectedCommitSha: string | null;
+	commitDetail: CommitDetailData | null;
+	highlightData: Record<string, Record<string, SyntaxToken[]>>;
+	isLoading: boolean;
+	sheetWidth: number | null;
+	isResizing: boolean;
+	onResize: (clientX: number) => void;
+	onResizeEnd: () => void;
+	onResetWidth: () => void;
+}) {
+	return (
+		<Sheet open={open} onOpenChange={onOpenChange}>
+			<SheetContent
+				title="Commit Details"
+				side="right"
+				className="p-0 overflow-hidden"
+				showCloseButton={false}
+				style={{
+					width: sheetWidth ?? DEFAULT_SHEET_WIDTH,
+					maxWidth: "90vw",
+					minWidth: "600px",
+					transition: isResizing ? "none" : "width 0.2s ease-out",
+				}}
+			>
+				<ResizeHandle
+					onResize={onResize}
+					onDragStart={() => {}}
+					onDragEnd={onResizeEnd}
+					onDoubleClick={onResetWidth}
+					className="absolute left-0 inset-y-0 z-20"
+				/>
+				<div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+					{selectedCommitSha && (
+						<Link
+							href={`/${owner}/${repo}/commits/${selectedCommitSha}`}
+							title="Open full page"
+							className="rounded-sm p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+						>
+							<Maximize2 className="h-4 w-4" />
+							<span className="sr-only">
+								Open full page
+							</span>
+						</Link>
+					)}
+					<button
+						onClick={() => onOpenChange(false)}
+						className="rounded-sm p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
+					>
+						<X className="h-4 w-4" />
+						<span className="sr-only">Close</span>
+					</button>
+				</div>
+				{isLoading ? (
+					<div className="flex items-center justify-center h-full">
+						<Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+					</div>
+				) : commitDetail ? (
+					<CommitDetail
+						owner={owner}
+						repo={repo}
+						commit={commitDetail}
+						highlightData={highlightData}
+					/>
+				) : (
+					<div className="flex items-center justify-center h-full">
+						<p className="text-sm text-muted-foreground">
+							Commit not found
+						</p>
+					</div>
+				)}
+			</SheetContent>
+		</Sheet>
+	);
+}
+
+// Main component
 export function CommitsList({ owner, repo, commits, defaultBranch, branches }: CommitsListProps) {
+	// Filter state
 	const [search, setSearch] = useState("");
-	const [copiedSha, setCopiedSha] = useState<string | null>(null);
-	const [expandedShas, setExpandedShas] = useState<Set<string>>(new Set());
 	const [since, setSince] = useState("");
 	const [until, setUntil] = useState("");
 	const [currentBranch, setCurrentBranch] = useState(defaultBranch);
 	const [displayedCommits, setDisplayedCommits] = useState<Commit[]>(commits);
 	const [isPending, startTransition] = useTransition();
 
-	const hasDateFilter = since !== "" || until !== "";
+	// UI state
+	const [copiedSha, setCopiedSha] = useState<string | null>(null);
+	const [expandedShas, setExpandedShas] = useState<Set<string>>(new Set());
 
+	// Sheet state
+	const [sheetOpen, setSheetOpen] = useState(false);
+	const [selectedCommitSha, setSelectedCommitSha] = useState<string | null>(null);
+	const [commitDetail, setCommitDetail] = useState<CommitDetailData | null>(null);
+	const [highlightData, setHighlightData] = useState<
+		Record<string, Record<string, SyntaxToken[]>>
+	>({});
+	const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+	const [sheetWidth, setSheetWidth] = useState<number | null>(null);
+	const [isResizing, setIsResizing] = useState(false);
+	const isMobile = useIsMobile();
+
+	// Load sheet width from cookie
+	useEffect(() => {
+		const match = document.cookie.match(
+			new RegExp(`(?:^|; )${SHEET_WIDTH_COOKIE}=([^;]*)`),
+		);
+		if (match) {
+			const savedWidth = parseInt(match[1], 10);
+			if (!isNaN(savedWidth) && savedWidth >= MIN_SHEET_WIDTH) {
+				setSheetWidth(savedWidth);
+			}
+		}
+	}, []);
+
+	// Cookie helpers
+	const saveSheetWidthCookie = useCallback((width: number | null) => {
+		if (width === null) {
+			document.cookie = `${SHEET_WIDTH_COOKIE}=;path=/;max-age=0`;
+		} else {
+			document.cookie = `${SHEET_WIDTH_COOKIE}=${width};path=/;max-age=${365 * 24 * 60 * 60};samesite=lax`;
+		}
+	}, []);
+
+	// Sheet resize handlers
+	const handleSheetResize = useCallback((clientX: number) => {
+		const newWidth = window.innerWidth - clientX;
+		const maxWidth = window.innerWidth * MAX_SHEET_WIDTH_RATIO;
+		setSheetWidth(Math.max(MIN_SHEET_WIDTH, Math.min(maxWidth, newWidth)));
+		setIsResizing(true);
+	}, []);
+
+	const handleResizeEnd = useCallback(() => {
+		setIsResizing(false);
+		if (sheetWidth !== null) {
+			saveSheetWidthCookie(sheetWidth);
+		}
+	}, [sheetWidth, saveSheetWidthCookie]);
+
+	const resetSheetWidth = useCallback(() => {
+		setSheetWidth(null);
+		saveSheetWidthCookie(null);
+	}, [saveSheetWidthCookie]);
+
+	// Commit fetching
+	const fetchCommits = useCallback(
+		(branch: string, newSince?: string, newUntil?: string) => {
+			startTransition(async () => {
+				const result = await fetchCommitsByDate(
+					owner,
+					repo,
+					newSince ? new Date(newSince).toISOString() : undefined,
+					newUntil
+						? new Date(newUntil + "T23:59:59").toISOString()
+						: undefined,
+					branch,
+				);
+				setDisplayedCommits(result as Commit[]);
+			});
+		},
+		[owner, repo],
+	);
+
+	// Subscribe to mutations
 	useMutationSubscription(
 		[
 			"pr:merged",
@@ -217,54 +711,48 @@ export function CommitsList({ owner, repo, commits, defaultBranch, branches }: C
 		],
 		(event: MutationEvent) => {
 			if (!isRepoEvent(event, owner, repo)) return;
-			startTransition(async () => {
-				const result = await fetchCommitsByDate(
-					owner,
-					repo,
-					since ? new Date(since).toISOString() : undefined,
-					until
-						? new Date(until + "T23:59:59").toISOString()
-						: undefined,
-					currentBranch,
-				);
-				setDisplayedCommits(result as Commit[]);
-			});
+			fetchCommits(currentBranch, since || undefined, until || undefined);
 		},
 	);
 
-	const fetchCommits = (branch: string, newSince?: string, newUntil?: string) => {
-		startTransition(async () => {
-			const result = await fetchCommitsByDate(
-				owner,
-				repo,
-				newSince ? new Date(newSince).toISOString() : undefined,
-				newUntil
-					? new Date(newUntil + "T23:59:59").toISOString()
-					: undefined,
-				branch,
-			);
-			setDisplayedCommits(result as Commit[]);
-		});
-	};
+	// Event handlers
+	const handleBranchChange = useCallback(
+		(branch: string) => {
+			setCurrentBranch(branch);
+			if (branch === defaultBranch && !since && !until) {
+				setDisplayedCommits(commits);
+			} else {
+				fetchCommits(branch, since, until);
+			}
+		},
+		[defaultBranch, since, until, commits, fetchCommits],
+	);
 
-	const handleDateChange = (newSince: string, newUntil: string) => {
-		if (!newSince && !newUntil && currentBranch === defaultBranch) {
-			setDisplayedCommits(commits);
-			return;
-		}
-		fetchCommits(currentBranch, newSince, newUntil);
-	};
+	const handleSinceChange = useCallback(
+		(newSince: string) => {
+			setSince(newSince);
+			if (!newSince && !until && currentBranch === defaultBranch) {
+				setDisplayedCommits(commits);
+			} else {
+				fetchCommits(currentBranch, newSince, until);
+			}
+		},
+		[until, currentBranch, defaultBranch, commits, fetchCommits],
+	);
 
-	const handleBranchChange = (branch: string) => {
-		setCurrentBranch(branch);
-		if (branch === defaultBranch && !since && !until) {
-			setDisplayedCommits(commits);
-		} else {
-			fetchCommits(branch, since, until);
-		}
-	};
+	const handleUntilChange = useCallback(
+		(newUntil: string) => {
+			setUntil(newUntil);
+			if (!since && !newUntil && currentBranch === defaultBranch) {
+				setDisplayedCommits(commits);
+			} else {
+				fetchCommits(currentBranch, since, newUntil);
+			}
+		},
+		[since, currentBranch, defaultBranch, commits, fetchCommits],
+	);
 
-	const clearDates = () => {
+	const clearDates = useCallback(() => {
 		setSince("");
 		setUntil("");
 		if (currentBranch === defaultBranch) {
@@ -272,93 +760,64 @@ export function CommitsList({ owner, repo, commits, defaultBranch, branches }: C
 		} else {
 			fetchCommits(currentBranch);
 		}
-	};
+	}, [currentBranch, defaultBranch, commits, fetchCommits]);
 
-	const filtered = search
-		? displayedCommits.filter((c) =>
-				c.commit.message.toLowerCase().includes(search.toLowerCase()),
-			)
-		: displayedCommits;
+	const handleCommitClick = useCallback(
+		async (sha: string) => {
+			setSelectedCommitSha(sha);
+			setSheetOpen(true);
+			setIsLoadingDetail(true);
+			setCommitDetail(null);
+			setHighlightData({});
 
-	const grouped = groupByDate(filtered);
+			const result = await fetchCommitDetail(owner, repo, sha);
+			setCommitDetail(result.commit);
+			setHighlightData(result.highlightData);
+			setIsLoadingDetail(false);
+		},
+		[owner, repo],
+	);
 
-	const copySha = (sha: string) => {
+	const copySha = useCallback((sha: string) => {
 		navigator.clipboard.writeText(sha);
 		setCopiedSha(sha);
 		setTimeout(() => setCopiedSha(null), 2000);
-	};
+	}, []);
 
-	const toggleExpand = (sha: string) => {
+	const toggleExpand = useCallback((sha: string) => {
 		setExpandedShas((prev) => {
 			const next = new Set(prev);
 			if (next.has(sha)) next.delete(sha);
 			else next.add(sha);
 			return next;
 		});
-	};
+	}, []);
+
+	// Derived state
+	const hasDateFilter = since !== "" || until !== "";
+	const filtered = search
+		? displayedCommits.filter((c) =>
+				c.commit.message.toLowerCase().includes(search.toLowerCase()),
+			)
+		: displayedCommits;
+	const grouped = groupByDate(filtered);
 
 	return (
 		<div className="space-y-4">
-			<div className="flex items-center gap-2">
-				<BranchPicker
-					branches={branches}
-					currentBranch={currentBranch}
-					defaultBranch={defaultBranch}
-					onChange={handleBranchChange}
-				/>
-				<div className="relative flex-1">
-					<input
-						type="text"
-						placeholder="Search commits..."
-						value={search}
-						onChange={(e) => setSearch(e.target.value)}
-						className="w-full rounded-md border border-border bg-background px-3 py-2 pl-9 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
-					/>
-					<svg
-						className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50"
-						width="14"
-						height="14"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="2"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					>
-						<circle cx="11" cy="11" r="8" />
-						<line x1="21" y1="21" x2="16.65" y2="16.65" />
-					</svg>
-				</div>
-				<input
-					type="date"
-					value={since}
-					onChange={(e) => {
-						setSince(e.target.value);
-						handleDateChange(e.target.value, until);
-					}}
-					title="Since date"
-					className="rounded-md border border-border bg-background px-2 py-2 font-mono text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-				/>
-				<input
-					type="date"
-					value={until}
-					onChange={(e) => {
-						setUntil(e.target.value);
-						handleDateChange(since, e.target.value);
-					}}
-					title="Until date"
-					className="rounded-md border border-border bg-background px-2 py-2 font-mono text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-				/>
-				{hasDateFilter && (
-					<button
-						onClick={clearDates}
-						title="Clear date filters"
-						className="rounded-md border border-border bg-background px-2 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
-					>
-						✕
-					</button>
-				)}
-			</div>
+			<CommitsToolbar
+				branches={branches}
+				currentBranch={currentBranch}
+				defaultBranch={defaultBranch}
+				search={search}
+				since={since}
+				until={until}
+				hasDateFilter={hasDateFilter}
+				onBranchChange={handleBranchChange}
+				onSearchChange={setSearch}
+				onSinceChange={handleSinceChange}
+				onUntilChange={handleUntilChange}
+				onClearDates={clearDates}
+			/>
 
 			{isPending && (
 				<div className="py-4 text-center text-xs text-muted-foreground">
@@ -373,126 +832,36 @@ export function CommitsList({ owner, repo, commits, defaultBranch, branches }: C
 			)}
 
 			{grouped.map(([date, dateCommits]) => (
-				<div key={date}>
-					<p className="mb-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70">
-						Commits on {date}
-					</p>
-					<div className="overflow-hidden rounded-md border border-border">
-						{dateCommits.map((commit, i) => {
-							const firstLine =
-								commit.commit.message.split("\n")[0];
-							const login = commit.author?.login;
-							const avatarUrl = commit.author?.avatar_url;
-							const shortSha = commit.sha.slice(0, 7);
-							const coAuthors = parseCoAuthors(commit.commit.message);
-							const body = getCommitBody(commit.commit.message);
-							const isExpanded = expandedShas.has(commit.sha);
-
-							return (
-								<div
-									key={commit.sha}
-									className={cn(
-										i > 0 && "border-t border-border",
-									)}
-								>
-									<div className="flex items-start gap-3 px-4 py-3">
-										{/* Avatar group: author + co-authors */}
-										<div className="mt-0.5 flex items-center -space-x-1 shrink-0">
-											{avatarUrl ? (
-												<Link
-													href={`/${login}`}
-													className="shrink-0 relative z-10"
-												>
-													<Image
-														src={avatarUrl}
-														alt={login ?? ""}
-														width={24}
-														height={24}
-														className="rounded-full border border-background"
-													/>
-												</Link>
-											) : (
-												<div className="h-6 w-6 shrink-0 rounded-full bg-muted border border-background relative z-10" />
-											)}
-											{coAuthors.slice(0, 3).map((ca, ci) => (
-												<div key={ca.email} className="relative" style={{ zIndex: 9 - ci }}>
-													<CoAuthorBadge coAuthor={ca} size={20} />
-												</div>
-											))}
-										</div>
-
-										<div className="min-w-0 flex-1">
-											<div className="flex items-center gap-1">
-												<Link
-													href={`/${owner}/${repo}/commits/${commit.sha}`}
-													className="text-sm font-medium text-foreground hover:text-info line-clamp-1"
-												>
-													{firstLine}
-												</Link>
-												{body && (
-													<button
-														onClick={() => toggleExpand(commit.sha)}
-														title={isExpanded ? "Collapse" : "Expand commit message"}
-														className="shrink-0 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
-													>
-														<MoreHorizontal className="w-3.5 h-3.5" />
-													</button>
-												)}
-											</div>
-											<p className="mt-0.5 text-xs text-muted-foreground">
-												{login ? (
-													<Link
-														href={`/${login}`}
-														className="hover:underline"
-													>
-														{login}
-													</Link>
-												) : (
-													(commit.commit.author?.name ?? "Unknown")
-												)}
-												{coAuthors.length > 0 && (
-													<>
-														{" & "}
-														{coAuthors.map((ca, ci) => (
-															<span key={ca.email}>
-																{ci > 0 && ", "}
-																{ca.name}
-															</span>
-														))}
-													</>
-												)}
-												{commit.commit.author?.date && (
-													<>
-														{" · "}
-														<TimeAgo date={commit.commit.author.date} />
-													</>
-												)}
-											</p>
-										</div>
-
-										<button
-											onClick={() => copySha(commit.sha)}
-											title="Copy full SHA"
-											className="mt-0.5 shrink-0 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs text-muted-foreground transition-colors hover:bg-muted"
-										>
-											{copiedSha === commit.sha ? "Copied!" : shortSha}
-										</button>
-									</div>
-
-									{/* Expanded commit body */}
-									{isExpanded && body && (
-										<div className="px-4 pb-3 pl-[52px]">
-											<pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto border-l-2 border-border pl-3">
-												{body}
-											</pre>
-										</div>
-									)}
-								</div>
-							);
-						})}
-					</div>
-				</div>
+				<CommitDateGroup
+					key={date}
+					date={date}
+					commits={dateCommits}
+					owner={owner}
+					repo={repo}
+					expandedShas={expandedShas}
+					copiedSha={copiedSha}
+					isMobile={isMobile}
+					onCommitClick={handleCommitClick}
+					onToggleExpand={toggleExpand}
+					onCopySha={copySha}
+				/>
 			))}
+
+			<CommitDetailSheet
+				open={sheetOpen}
+				onOpenChange={setSheetOpen}
+				owner={owner}
+				repo={repo}
+				selectedCommitSha={selectedCommitSha}
+				commitDetail={commitDetail}
+				highlightData={highlightData}
+				isLoading={isLoadingDetail}
+				sheetWidth={sheetWidth}
+				isResizing={isResizing}
+				onResize={handleSheetResize}
+				onResizeEnd={handleResizeEnd}
+				onResetWidth={resetSheetWidth}
+			/>
 		</div>
 	);
 }

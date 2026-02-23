@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { parseDiffPatch, type DiffLine, type DiffSegment } from "@/lib/github-utils";
@@ -103,13 +103,42 @@ function getFileIconColor(status: string) {
 	}
 }
 
+const SIDEBAR_WIDTH_COOKIE = "commit_detail_sidebar_width";
+const DEFAULT_SIDEBAR_WIDTH = 300;
+const MIN_SIDEBAR_WIDTH = 140;
+const MAX_SIDEBAR_WIDTH = 1000;
+
 export function CommitDetail({ owner, repo, commit, highlightData }: CommitDetailProps) {
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [wordWrap, setWordWrap] = useState(true);
-	const [sidebarWidth, setSidebarWidth] = useState(220);
+	const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
 	const [isDragging, setIsDragging] = useState(false);
 	const [copiedSha, setCopiedSha] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const match = document.cookie.match(
+			new RegExp(`(?:^|; )${SIDEBAR_WIDTH_COOKIE}=([^;]*)`),
+		);
+		if (match) {
+			const savedWidth = parseInt(match[1], 10);
+			if (
+				!isNaN(savedWidth) &&
+				savedWidth >= MIN_SIDEBAR_WIDTH &&
+				savedWidth <= MAX_SIDEBAR_WIDTH
+			) {
+				setSidebarWidth(savedWidth);
+			}
+		}
+	}, []);
+
+	const saveSidebarWidthCookie = useCallback((width: number | null) => {
+		if (width === null) {
+			document.cookie = `${SIDEBAR_WIDTH_COOKIE}=;path=/;max-age=0`;
+		} else {
+			document.cookie = `${SIDEBAR_WIDTH_COOKIE}=${width};path=/;max-age=${365 * 24 * 60 * 60};samesite=lax`;
+		}
+	}, []);
 
 	const files = commit.files;
 	const totalAdditions =
@@ -122,8 +151,18 @@ export function CommitDetail({ owner, repo, commit, highlightData }: CommitDetai
 		if (!containerRef.current) return;
 		const rect = containerRef.current.getBoundingClientRect();
 		const x = clientX - rect.left;
-		setSidebarWidth(Math.max(140, Math.min(400, x)));
+		setSidebarWidth(Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, x)));
 	}, []);
+
+	const handleSidebarResizeEnd = useCallback(() => {
+		setIsDragging(false);
+		saveSidebarWidthCookie(sidebarWidth);
+	}, [sidebarWidth, saveSidebarWidthCookie]);
+
+	const resetSidebarWidth = useCallback(() => {
+		setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+		saveSidebarWidthCookie(null);
+	}, [saveSidebarWidthCookie]);
 
 	const copySha = () => {
 		navigator.clipboard.writeText(commit.sha);
@@ -210,7 +249,9 @@ export function CommitDetail({ owner, repo, commit, highlightData }: CommitDetai
 					{/* Co-authors */}
 					{coAuthors.length > 0 && (
 						<>
-							<span className="text-muted-foreground/30">|</span>
+							<span className="text-muted-foreground/30">
+								|
+							</span>
 							<div className="flex items-center gap-1.5">
 								{coAuthors.map((ca) => (
 									<div
@@ -220,7 +261,9 @@ export function CommitDetail({ owner, repo, commit, highlightData }: CommitDetai
 									>
 										<div className="rounded-full bg-muted flex items-center justify-center shrink-0 h-[18px] w-[18px]">
 											<span className="text-[7px] font-medium text-muted-foreground leading-none">
-												{getInitials(ca.name)}
+												{getInitials(
+													ca.name,
+												)}
 											</span>
 										</div>
 										<span className="text-xs text-foreground/70">
@@ -346,9 +389,14 @@ export function CommitDetail({ owner, repo, commit, highlightData }: CommitDetai
 											),
 										)}
 									/>
+									{dir && (
+										<span className="text-[9px] font-mono text-muted-foreground/50 truncate min-w-0">
+											{dir}/
+										</span>
+									)}
 									<span
 										className={cn(
-											"text-[11px] font-mono truncate",
+											"text-[11px] font-mono shrink-0",
 											activeIndex ===
 												i
 												? "text-foreground"
@@ -357,11 +405,6 @@ export function CommitDetail({ owner, repo, commit, highlightData }: CommitDetai
 									>
 										{name}
 									</span>
-									{dir && (
-										<span className="text-[9px] font-mono text-muted-foreground/50 truncate ml-auto shrink-0">
-											{dir}
-										</span>
-									)}
 									<div className="flex items-center gap-1 shrink-0 ml-auto">
 										{file.additions >
 											0 && (
@@ -392,8 +435,8 @@ export function CommitDetail({ owner, repo, commit, highlightData }: CommitDetai
 				<ResizeHandle
 					onResize={handleSidebarResize}
 					onDragStart={() => setIsDragging(true)}
-					onDragEnd={() => setIsDragging(false)}
-					onDoubleClick={() => setSidebarWidth(220)}
+					onDragEnd={handleSidebarResizeEnd}
+					onDoubleClick={resetSidebarWidth}
 					className="hidden lg:block"
 				/>
 

@@ -1,6 +1,7 @@
 "use server";
 
-import { getRepoCommits } from "@/lib/github";
+import { getRepoCommits, getCommit } from "@/lib/github";
+import { highlightDiffLines, type SyntaxToken } from "@/lib/shiki";
 
 export async function fetchCommitsByDate(
 	owner: string,
@@ -33,5 +34,84 @@ export async function fetchLatestCommit(owner: string, repo: string) {
 			: c.commit.author?.name
 				? { login: c.commit.author.name, avatarUrl: "" }
 				: null,
+	};
+}
+
+export type CommitDetailData = {
+	sha: string;
+	html_url: string;
+	commit: {
+		message: string;
+		author: {
+			name?: string | null;
+			date?: string | null;
+		} | null;
+		committer: {
+			name?: string | null;
+			date?: string | null;
+		} | null;
+	};
+	author: {
+		login: string;
+		avatar_url: string;
+		html_url: string;
+	} | null;
+	committer: {
+		login: string;
+		avatar_url: string;
+		html_url: string;
+	} | null;
+	parents: { sha: string; html_url: string }[];
+	stats?: {
+		total: number;
+		additions: number;
+		deletions: number;
+	};
+	files: Array<{
+		filename: string;
+		status: string;
+		additions: number;
+		deletions: number;
+		patch?: string;
+		previous_filename?: string;
+	}>;
+};
+
+export async function fetchCommitDetail(
+	owner: string,
+	repo: string,
+	sha: string,
+): Promise<{
+	commit: CommitDetailData | null;
+	highlightData: Record<string, Record<string, SyntaxToken[]>>;
+}> {
+	const commit = await getCommit(owner, repo, sha);
+
+	if (!commit) {
+		return { commit: null, highlightData: {} };
+	}
+
+	const highlightData: Record<string, Record<string, SyntaxToken[]>> = {};
+	if (commit.files && commit.files.length > 0) {
+		await Promise.all(
+			commit.files.map(async (file: { filename: string; patch?: string }) => {
+				if (file.patch) {
+					try {
+						highlightData[file.filename] =
+							await highlightDiffLines(
+								file.patch,
+								file.filename,
+							);
+					} catch {
+						// silent - fall back to plain text
+					}
+				}
+			}),
+		);
+	}
+
+	return {
+		commit: commit as CommitDetailData,
+		highlightData,
 	};
 }
