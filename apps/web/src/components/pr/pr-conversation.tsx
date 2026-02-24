@@ -11,6 +11,8 @@ import { CommitActivityGroup } from "./commit-activity-group";
 import { ReactionDisplay, type Reactions } from "@/components/shared/reaction-display";
 import { CollapsibleDescription } from "./collapsible-description";
 import { ChatMessageWrapper } from "./chat-message-wrapper";
+import { PRChecksPanel } from "./pr-checks-panel";
+import type { CheckStatus } from "@/lib/github";
 
 interface BaseUser {
 	login: string;
@@ -130,11 +132,13 @@ export async function PRConversation({
 	owner,
 	repo,
 	pullNumber,
+	checkStatus,
 }: {
 	entries: TimelineEntry[];
 	owner: string;
 	repo: string;
 	pullNumber: number;
+	checkStatus?: CheckStatus;
 }) {
 	const grouped = groupEntries(entries);
 
@@ -245,13 +249,28 @@ export async function PRConversation({
 						/>
 					);
 				}
+				if (entry.type === "description") {
+					return (
+						<div key={entry.id} className="space-y-3">
+							<ChatMessage
+								entry={entry}
+								owner={owner}
+								repo={repo}
+								pullNumber={pullNumber}
+							/>
+							{checkStatus && (
+								<PRChecksPanel
+									checkStatus={checkStatus}
+									owner={owner}
+									repo={repo}
+								/>
+							)}
+						</div>
+					);
+				}
 				return (
 					<ChatMessage
-						key={
-							entry.type === "description"
-								? entry.id
-								: `comment-${entry.id}`
-						}
+						key={`comment-${entry.id}`}
 						entry={entry}
 						owner={owner}
 						repo={repo}
@@ -458,10 +477,19 @@ function CommitGroup({ commits }: { commits: CommitEntry[] }) {
 						<GitCommitHorizontal className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
 						<div className="flex items-center -space-x-1 shrink-0">
 							{commit.user ? (
-								<Link href={`/users/${commit.user.login}`} className="relative z-10">
+								<Link
+									href={`/users/${commit.user.login}`}
+									className="relative z-10"
+								>
 									<Image
-										src={commit.user.avatar_url}
-										alt={commit.user.login}
+										src={
+											commit.user
+												.avatar_url
+										}
+										alt={
+											commit.user
+												.login
+										}
 										width={16}
 										height={16}
 										className="rounded-full border border-background"
@@ -474,11 +502,17 @@ function CommitGroup({ commits }: { commits: CommitEntry[] }) {
 								<div
 									key={ca.email}
 									className="rounded-full bg-muted border border-background flex items-center justify-center shrink-0 relative"
-									style={{ width: 16, height: 16, zIndex: 9 - ci }}
+									style={{
+										width: 16,
+										height: 16,
+										zIndex: 9 - ci,
+									}}
 									title={`${ca.name} <${ca.email}>`}
 								>
 									<span className="text-[7px] font-medium text-muted-foreground leading-none">
-										{getInitials(ca.name)}
+										{getInitials(
+											ca.name,
+										)}
 									</span>
 								</div>
 							))}

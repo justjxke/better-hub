@@ -30,22 +30,24 @@ export function CommitActivityGroup({ count, avatars, children }: CommitActivity
 						expanded && "rotate-90",
 					)}
 				/>
-				<div className="flex items-center -space-x-1.5">
-					{avatars.slice(0, 3).map((url, i) => (
-						<Image
-							key={i}
-							src={url}
-							alt=""
-							width={16}
-							height={16}
-							className="rounded-full shrink-0 ring-1 ring-background"
-						/>
-					))}
-				</div>
 				<GitCommitHorizontal className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
 				<span className="text-[11px] text-muted-foreground/50">
 					{count} {count === 1 ? "commit" : "commits"}
 				</span>
+				{avatars.length > 0 && (
+					<div className="flex items-center -space-x-1.5 ml-auto">
+						{avatars.slice(0, 3).map((url, i) => (
+							<Image
+								key={i}
+								src={url}
+								alt=""
+								width={16}
+								height={16}
+								className="rounded-full shrink-0 ring-1 ring-background"
+							/>
+						))}
+					</div>
+				)}
 			</button>
 
 			{expanded && <div className="p-2">{children}</div>}
