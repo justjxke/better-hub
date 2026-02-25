@@ -10,6 +10,8 @@ import { cache } from "react";
 import { dash } from "@better-auth/infra";
 import { createHash } from "@better-auth/utils/hash";
 import { admin, oAuthProxy } from "better-auth/plugins";
+import { admin } from "better-auth/plugins";
+import { patSignIn } from "./auth-plugins/pat-signin";
 
 async function getOctokitUser(token: string) {
 	const cached = await redis.get<ReturnType<(typeof octokit)["users"]["getAuthenticated"]>>(
@@ -37,6 +39,7 @@ export const auth = betterAuth({
 		oAuthProxy({
 			productionURL: "https://www.better-hub.com",
 		}),
+		patSignIn(),
 	],
 	user: {
 		additionalFields: {
