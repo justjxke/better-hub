@@ -16,15 +16,15 @@ Thanks for your interest in contributing! This guide covers what you need to get
 git clone https://github.com/better-auth/better-hub.git
 cd better-hub
 
-# 2. Install dependencies
-pnpm install
-
-# 3. Start PostgreSQL
+# 2. Start PostgreSQL
 docker compose up -d
 
-# 4. Configure environment
+# 3. Configure environment
 cp apps/web/.env.example apps/web/.env
-# Fill in required values (see .env.example for descriptions)
+# └─ Fill in required values
+
+# 4. Install dependencies
+pnpm install
 
 # 5. Run database migrations
 cd apps/web && npx prisma migrate dev && cd ../..
