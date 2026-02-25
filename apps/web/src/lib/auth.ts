@@ -9,7 +9,7 @@ import { headers } from "next/headers";
 import { cache } from "react";
 import { dash } from "@better-auth/infra";
 import { createHash } from "@better-auth/utils/hash";
-import { admin } from "better-auth/plugins";
+import { admin, oAuthProxy } from "better-auth/plugins";
 
 async function getOctokitUser(token: string) {
 	const cached = await redis.get<ReturnType<(typeof octokit)["users"]["getAuthenticated"]>>(
@@ -34,6 +34,9 @@ export const auth = betterAuth({
 			},
 		}),
 		admin(),
+		oAuthProxy({
+			productionURL: "https://www.better-hub.com",
+		}),
 	],
 	user: {
 		additionalFields: {
@@ -76,7 +79,11 @@ export const auth = betterAuth({
 			maxAge: 60 * 60 * 24 * 7,
 		},
 	},
-	trustedOrigins: ["https://www.better-hub.com"],
+	trustedOrigins: [
+		// Production
+		"https://www.better-hub.com",
+		// TODO: vercel preview domain scope
+	],
 });
 
 export const getServerSession = cache(async () => {
