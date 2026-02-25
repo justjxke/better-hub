@@ -6,6 +6,7 @@ import "./globals.css";
 import { generateThemeScript } from "@/lib/theme-script";
 import { listThemes } from "@/lib/themes";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -82,6 +83,7 @@ export default function RootLayout({
 						{children}
 					</ThemeProvider>
 				</QueryProvider>
+				<Analytics />
 			</body>
 		</html>
 	);
