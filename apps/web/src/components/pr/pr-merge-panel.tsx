@@ -162,10 +162,29 @@ export function PRMergePanel({
 				}),
 			});
 			const data = await res.json();
+			if (!res.ok) {
+				if (data.error === "CREDIT_EXHAUSTED") {
+					setResult({
+						type: "error",
+						message: "Your credits have been used up",
+					});
+				} else if (data.error === "SPENDING_LIMIT_REACHED") {
+					setResult({
+						type: "error",
+						message: "Monthly spending limit reached",
+					});
+				} else {
+					setResult({
+						type: "error",
+						message: data.error || "Failed to generate",
+					});
+				}
+				return;
+			}
 			if (data.title) setCommitTitle(data.title);
 			if (data.description) setCommitMessage(data.description);
 		} catch {
-			// silently fail
+			setResult({ type: "error", message: "Failed to generate commit message" });
 		} finally {
 			setIsGenerating(false);
 		}
