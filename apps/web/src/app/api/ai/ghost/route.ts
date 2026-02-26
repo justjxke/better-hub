@@ -3079,20 +3079,20 @@ export async function POST(req: Request) {
 	// Extract userId and commit author info
 	const session = await auth.api.getSession({ headers: await headers() });
 	const userId = session?.user?.id;
+	if (!userId) {
+		return new Response("Unauthorized", { status: 401 });
+	}
 
 	// Check AI usage limit — BYOK ghost chat uses the user's own key (no cost to app)
-	let isCustomApiKey = false;
-	if (userId) {
-		const settings = await getUserSettings(userId);
-		isCustomApiKey = !!(settings.useOwnApiKey && settings.openrouterApiKey);
-		const result = await checkUsageLimit(userId, isCustomApiKey);
-		if (!result.allowed) {
-			const errorCode = getBillingErrorCode(result);
-			return new Response(JSON.stringify({ error: errorCode, ...result }), {
-				status: 429,
-				headers: { "Content-Type": "application/json" },
-			});
-		}
+	const settings = await getUserSettings(userId);
+	let isCustomApiKey = !!(settings.useOwnApiKey && settings.openrouterApiKey);
+	const limitResult = await checkUsageLimit(userId, isCustomApiKey);
+	if (!limitResult.allowed) {
+		const errorCode = getBillingErrorCode(limitResult);
+		return new Response(JSON.stringify({ error: errorCode, ...limitResult }), {
+			status: 429,
+			headers: { "Content-Type": "application/json" },
+		});
 	}
 
 	let commitAuthor: CommitAuthor | undefined;
@@ -3350,13 +3350,10 @@ export async function POST(req: Request) {
 	const serverApiKey = process.env.OPEN_ROUTER_API_KEY ?? "";
 	let apiKey = serverApiKey;
 
-	if (userId) {
-		const settings = await getUserSettings(userId);
-		if (settings.ghostModel) userModelChoice = settings.ghostModel;
-		if (settings.useOwnApiKey && settings.openrouterApiKey) {
-			apiKey = settings.openrouterApiKey;
-			isCustomApiKey = true;
-		}
+	if (settings.ghostModel) userModelChoice = settings.ghostModel;
+	if (settings.useOwnApiKey && settings.openrouterApiKey) {
+		apiKey = settings.openrouterApiKey;
+		isCustomApiKey = true;
 	}
 
 	const modelId = resolveModel(userModelChoice, taskType);
