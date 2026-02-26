@@ -3,7 +3,9 @@ import { generateText } from "ai";
 import { auth } from "@/lib/auth";
 import { getErrorMessage } from "@/lib/utils";
 import { headers } from "next/headers";
-import { checkAiLimit, incrementAiUsage } from "@/lib/ai-usage";
+import { checkUsageLimit } from "@/lib/billing/usage-limit";
+import { getBillingErrorCode } from "@/lib/billing/config";
+import { logTokenUsage } from "@/lib/billing/token-usage";
 
 export async function POST(req: Request) {
 	const session = await auth.api.getSession({ headers: await headers() });
@@ -11,14 +13,14 @@ export async function POST(req: Request) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 
-	const { allowed, current, limit } = await checkAiLimit(session.user.id);
-	if (!allowed) {
-		return new Response(
-			JSON.stringify({ error: "MESSAGE_LIMIT_REACHED", current, limit }),
-			{ status: 429, headers: { "Content-Type": "application/json" } },
-		);
+	const limitResult = await checkUsageLimit(session.user.id);
+	if (!limitResult.allowed) {
+		const errorCode = getBillingErrorCode(limitResult);
+		return new Response(JSON.stringify({ error: errorCode, ...limitResult }), {
+			status: 429,
+			headers: { "Content-Type": "application/json" },
+		});
 	}
-	await incrementAiUsage(session.user.id);
 
 	const body = await req.json();
 	const { prompt, owner, repo } = body;
@@ -27,7 +29,7 @@ export async function POST(req: Request) {
 	}
 
 	try {
-		const { text } = await generateText({
+		const { text, usage } = await generateText({
 			model: anthropic("claude-haiku-4-5-20251001"),
 			system: `You are a prompt engineer helping users write clear, actionable prompts for AI coding tools. The prompt is for the repository ${owner}/${repo}.
 
@@ -40,6 +42,15 @@ Rewrite the user's prompt to be:
 Only output the improved prompt, nothing else. Do not wrap it in quotes or add meta-commentary.`,
 			prompt,
 		});
+
+		logTokenUsage({
+			userId: session.user.id,
+			provider: "anthropic",
+			modelId: "claude-haiku-4-5-20251001",
+			taskType: "rewrite-prompt",
+			usage,
+			isCustomApiKey: false,
+		}).catch((e) => console.error("[billing] logTokenUsage failed:", e));
 
 		return Response.json({ text: text.trim() });
 	} catch (e: unknown) {
