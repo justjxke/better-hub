@@ -53,7 +53,7 @@ export async function PATCH(req: Request) {
 	const { monthlyCapUsd } = body as { monthlyCapUsd?: number | null };
 
 	if (
-		monthlyCapUsd !== null &&
+		monthlyCapUsd != null &&
 		(typeof monthlyCapUsd !== "number" || !Number.isFinite(monthlyCapUsd))
 	) {
 		return Response.json(
