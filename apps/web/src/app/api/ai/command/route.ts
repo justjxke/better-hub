@@ -5,7 +5,9 @@ import { z } from "zod";
 import { getOctokitFromSession } from "@/lib/ai-auth";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { checkAiLimit, incrementAiUsage } from "@/lib/ai-usage";
+import { checkUsageLimit } from "@/lib/billing/usage-limit";
+import { getBillingErrorCode } from "@/lib/billing/config";
+import { logTokenUsage } from "@/lib/billing/token-usage";
 
 export const maxDuration = 60;
 
@@ -27,23 +29,25 @@ export async function POST(req: Request) {
 		} | null;
 	} = await req.json();
 
+	const session = await auth.api.getSession({ headers: await headers() });
+	if (!session?.user) {
+		return new Response("Unauthorized", { status: 401 });
+	}
+	const userId = session.user.id;
+
 	const octokit = await getOctokitFromSession();
 	if (!octokit) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 
 	// Check AI message limit
-	const session = await auth.api.getSession({ headers: await headers() });
-	const userId = session?.user?.id;
-	if (userId) {
-		const { allowed, current, limit } = await checkAiLimit(userId);
-		if (!allowed) {
-			return new Response(
-				JSON.stringify({ error: "MESSAGE_LIMIT_REACHED", current, limit }),
-				{ status: 429, headers: { "Content-Type": "application/json" } },
-			);
-		}
-		await incrementAiUsage(userId);
+	const limitResult = await checkUsageLimit(userId);
+	if (!limitResult.allowed) {
+		const errorCode = getBillingErrorCode(limitResult);
+		return new Response(JSON.stringify({ error: errorCode, ...limitResult }), {
+			status: 429,
+			headers: { "Content-Type": "application/json" },
+		});
 	}
 
 	// Get authenticated user info
@@ -660,6 +664,20 @@ ${pageContextPrompt}`,
 		},
 		stopWhen: stepCountIs(3),
 	});
+
+	// Fire-and-forget token usage logging
+	Promise.resolve(result.usage)
+		.then((usage) =>
+			logTokenUsage({
+				userId,
+				provider: "anthropic",
+				modelId: "claude-haiku-4-5-20251001",
+				taskType: "command",
+				usage,
+				isCustomApiKey: false,
+			}),
+		)
+		.catch((e) => console.error("[billing] logTokenUsage failed:", e));
 
 	return result.toUIMessageStreamResponse();
 }

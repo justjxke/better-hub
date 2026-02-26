@@ -52,6 +52,7 @@ import {
 	unpinFromOverview,
 	getPinnedUrlsForRepo,
 } from "@/app/(app)/repos/[owner]/[repo]/pin-actions";
+import { SELECTABLE_MODELS } from "@/lib/billing/ai-models";
 
 interface SearchRepo {
 	id: number;
@@ -176,44 +177,7 @@ export function CommandMenu() {
 	const [fileTreeLoading, setFileTreeLoading] = useState(false);
 	const fileTreeRepoRef = useRef<string>("");
 
-	const MODELS = useMemo(
-		() => [
-			{
-				id: "moonshotai/kimi-k2.5",
-				label: "Kimi K2.5",
-				desc: "Moonshot AI — Default",
-			},
-			{
-				id: "anthropic/claude-sonnet-4",
-				label: "Claude Sonnet 4",
-				desc: "Anthropic",
-			},
-			{
-				id: "anthropic/claude-opus-4",
-				label: "Claude Opus 4",
-				desc: "Anthropic",
-			},
-			{ id: "openai/gpt-4.1", label: "GPT-4.1", desc: "OpenAI" },
-			{ id: "openai/o3-mini", label: "o3-mini", desc: "OpenAI" },
-			{
-				id: "google/gemini-2.5-pro-preview",
-				label: "Gemini 2.5 Pro",
-				desc: "Google",
-			},
-			{
-				id: "google/gemini-2.5-flash-preview",
-				label: "Gemini 2.5 Flash",
-				desc: "Google",
-			},
-			{ id: "deepseek/deepseek-chat-v3", label: "DeepSeek V3", desc: "DeepSeek" },
-			{
-				id: "meta-llama/llama-4-maverick",
-				label: "Llama 4 Maverick",
-				desc: "Meta",
-			},
-		],
-		[],
-	);
+	const MODELS = SELECTABLE_MODELS;
 
 	const fetchSettings = useCallback(async () => {
 		setSettingsLoading(true);
@@ -1345,7 +1309,7 @@ export function CommandMenu() {
 				m.desc.toLowerCase().includes(s) ||
 				m.id.toLowerCase().includes(s),
 		);
-	}, [mode, search, MODELS]);
+	}, [mode, search]);
 
 	const modelItems = useMemo(() => {
 		return filteredModels.map((m) => ({

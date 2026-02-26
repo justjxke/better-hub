@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
+import { BILLING_ERROR } from "@/lib/billing/config";
 import { HighlightedCodeBlock } from "@/components/shared/highlighted-code-block";
 import {
 	ArrowUp,
@@ -45,6 +46,7 @@ import {
 	Ghost,
 	Copy,
 	X,
+	AlertCircle,
 } from "lucide-react";
 
 function GithubIcon({ className }: { className?: string }) {
@@ -67,6 +69,18 @@ const GHOST_THINKING_PHRASES = [
 	"Drifting through issues",
 	"Manifesting a response",
 ];
+
+function parseErrorMessage(error: Error | undefined): string {
+	const raw = error?.message;
+	if (!raw) return "Ghost got lost in the void";
+	try {
+		const parsed = JSON.parse(raw) as Record<string, unknown>;
+		if (typeof parsed.error === "string") return parsed.error;
+	} catch {
+		// not JSON
+	}
+	return raw;
+}
 
 function formatElapsed(ms: number): string {
 	const seconds = ms / 1000;
@@ -928,7 +942,9 @@ export function AIChat({
 	const [welcomeLoading, setWelcomeLoading] = useState(false);
 	const isStreaming = status === "streaming";
 	const isLoading = status === "submitted" || isStreaming || welcomeLoading;
-	const isLimitReached = !!error?.message?.includes("MESSAGE_LIMIT_REACHED");
+	const isLimitReached = Object.values(BILLING_ERROR).some((code) =>
+		error?.message?.includes(code),
+	);
 	const router = useRouter();
 
 	// Report working status to global context (only from the active tab)
@@ -1583,51 +1599,37 @@ export function AIChat({
 							{error && historyLoaded && (
 								<div className="flex flex-col items-center gap-2 py-4">
 									<Ghost className="w-5 h-5 text-muted-foreground/20" />
-									{error.message?.includes(
-										"MESSAGE_LIMIT_REACHED",
-									) ? (
-										<>
-											<span className="text-[11px] text-muted-foreground/50 text-center max-w-[260px]">
-												You&apos;ve
-												used
-												all
-												20
-												free
-												AI
-												messages.
-												Billing
-												is
-												coming
-												soon.
-											</span>
-											<span className="text-[10px] text-muted-foreground/35 text-center max-w-[240px]">
-												You
-												can
-												add
-												your
-												own
-												OpenRouter
-												API
-												key
-												in
-												Settings
-												to
-												continue
-												using
-												AI
-												features.
-											</span>
-										</>
+									{isLimitReached ? (
+										<div className="flex flex-col items-center gap-1.5 max-w-[300px]">
+											<p className="text-[11px] text-muted-foreground/50 text-center">
+												{error?.message?.includes(
+													BILLING_ERROR.CREDIT_EXHAUSTED,
+												)
+													? "Your credits have been used up."
+													: error?.message?.includes(
+																BILLING_ERROR.SPENDING_LIMIT_REACHED,
+														  )
+														? "You've reached your monthly spending limit."
+														: "You've reached the free message limit."}
+											</p>
+											<p className="text-[10px] text-muted-foreground/35 text-center">
+												{error?.message?.includes(
+													BILLING_ERROR.SPENDING_LIMIT_REACHED,
+												)
+													? "Adjust your spending limit in Settings → Billing to continue."
+													: "Subscribe or add your own API key in Settings to continue."}
+											</p>
+										</div>
 									) : (
-										<>
-											<span className="text-[11px] text-muted-foreground/50">
-												Ghost
-												got
-												lost
-												in
-												the
-												void
-											</span>
+										<div className="flex flex-col items-center gap-2 max-w-[300px]">
+											<div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5">
+												<AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+												<p className="text-[11px] text-destructive/80 leading-relaxed">
+													{parseErrorMessage(
+														error,
+													)}
+												</p>
+											</div>
 											<button
 												type="button"
 												onClick={() => {
@@ -1640,7 +1642,7 @@ export function AIChat({
 												Summon
 												again
 											</button>
-										</>
+										</div>
 									)}
 								</div>
 							)}
