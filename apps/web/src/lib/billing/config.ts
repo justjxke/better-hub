@@ -17,10 +17,6 @@ export function getBillingErrorCode(result: {
 	return BILLING_ERROR.MESSAGE_LIMIT_REACHED;
 }
 
-// ── Free Tier ──
-
-export const FREE_MESSAGE_LIMIT = 20;
-
 // ── Welcome Credit ──
 
 export const WELCOME_CREDIT_TYPE = "welcome_credit";
