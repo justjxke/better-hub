@@ -2679,6 +2679,12 @@ The sandbox has git, node, npm, python, and common dev tools.
 					};
 				}
 
+				if (branch && !validName.test(branch)) {
+					return {
+						error: `Invalid branch name: "${branch}". Branch names may only contain alphanumeric characters, dots, hyphens, and underscores.`,
+					};
+				}
+
 				// Make idempotent — kill existing sandbox if any
 				if (sandbox) {
 					await sandbox.kill().catch(() => {});
@@ -2706,18 +2712,27 @@ The sandbox has git, node, npm, python, and common dev tools.
 				}
 
 				try {
-					// Git config
+					const safeName = (commitAuthor?.name ?? "Ghost").replace(
+						/["`$\\]/g,
+						"",
+					);
+					const safeEmail = (
+						commitAuthor?.email ?? "ghost@better-github.app"
+					).replace(/["`$\\]/g, "");
 					await sandbox.commands.run(
-						`git config --global user.name "${commitAuthor?.name ?? "Ghost"}" && git config --global user.email "${commitAuthor?.email ?? "ghost@better-github.app"}"`,
+						`git config --global user.name "${safeName}" && git config --global user.email "${safeEmail}"`,
 					);
 
 					repoPath = `/home/user/${repo}`;
 					repoOwner = owner;
 					repoName = repo;
 
-					// Clone with token auth – shallow clone to save time/disk
 					await sandbox.commands.run(
-						`git clone --depth 1 ${branch ? `-b ${branch}` : ""} https://x-access-token:${githubToken}@github.com/${owner}/${repo}.git ${repoPath}`,
+						`git config --global credential.helper store && printf 'protocol=https\\nhost=github.com\\nusername=x-access-token\\npassword=%s\\n' '${githubToken.replace(/'/g, "'\\''")}' | git credential approve`,
+					);
+
+					await sandbox.commands.run(
+						`git clone --depth 1 ${branch ? `-b ${branch}` : ""} https://github.com/${owner}/${repo}.git ${repoPath}`,
 						{ timeoutMs: 300_000 },
 					);
 				} catch (e: unknown) {

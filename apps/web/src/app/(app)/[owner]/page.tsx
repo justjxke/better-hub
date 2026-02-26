@@ -9,6 +9,7 @@ import {
 	getUserOrgTopRepos,
 	getContributionData,
 } from "@/lib/github";
+import { ogImageUrl, ogImages } from "@/lib/og/og-utils";
 import { OrgDetailContent } from "@/components/orgs/org-detail-content";
 import { UserProfileContent } from "@/components/users/user-profile-content";
 
@@ -18,16 +19,28 @@ export async function generateMetadata({
 	params: Promise<{ owner: string }>;
 }): Promise<Metadata> {
 	const { owner } = await params;
+	const ogUrl = ogImageUrl({ type: "owner", owner });
 	const orgData = await getOrg(owner).catch(() => null);
 	if (orgData) {
-		return { title: orgData.name || orgData.login };
+		return {
+			title: orgData.name || orgData.login,
+			description:
+				orgData.description ||
+				`${orgData.name || orgData.login} on Better Hub`,
+			openGraph: { title: orgData.name || orgData.login, ...ogImages(ogUrl) },
+			twitter: { card: "summary_large_image", ...ogImages(ogUrl) },
+		};
 	}
 	const userData = await getUser(owner).catch(() => null);
 	if (userData) {
+		const displayName = userData.name
+			? `${userData.name} (${userData.login})`
+			: userData.login;
 		return {
-			title: userData.name
-				? `${userData.name} (${userData.login})`
-				: userData.login,
+			title: displayName,
+			description: userData.bio || `${displayName} on Better Hub`,
+			openGraph: { title: displayName, ...ogImages(ogUrl) },
+			twitter: { card: "summary_large_image", ...ogImages(ogUrl) },
 		};
 	}
 	return { title: owner };

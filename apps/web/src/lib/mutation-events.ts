@@ -47,6 +47,12 @@ export type PRConflictResolvedEvent = {
 	repo: string;
 	number: number;
 };
+export type PRCreatedEvent = {
+	type: "pr:created";
+	owner: string;
+	repo: string;
+	number: number;
+};
 
 // ── Issue Events ──────────────────────────────────────────────
 
@@ -74,6 +80,29 @@ export type IssueCommentedEvent = {
 	repo: string;
 	number: number;
 };
+
+// ── Discussion Events ──────────────────────────────────────────
+
+export type DiscussionCreatedEvent = {
+	type: "discussion:created";
+	owner: string;
+	repo: string;
+	number: number;
+};
+export type DiscussionCommentedEvent = {
+	type: "discussion:commented";
+	owner: string;
+	repo: string;
+	number: number;
+};
+
+// ── Prompt Events ─────────────────────────────────────────────
+
+export type PromptCreatedEvent = { type: "prompt:created"; owner: string; repo: string };
+export type PromptAcceptedEvent = { type: "prompt:accepted"; owner: string; repo: string };
+export type PromptClosedEvent = { type: "prompt:closed"; owner: string; repo: string };
+export type PromptReopenedEvent = { type: "prompt:reopened"; owner: string; repo: string };
+export type PromptDeletedEvent = { type: "prompt:deleted"; owner: string; repo: string };
 
 // ── Repo Events ───────────────────────────────────────────────
 
@@ -119,10 +148,18 @@ export type MutationEvent =
 	| PRThreadResolvedEvent
 	| PRThreadUnresolvedEvent
 	| PRConflictResolvedEvent
+	| PRCreatedEvent
 	| IssueClosedEvent
 	| IssueReopenedEvent
 	| IssueCreatedEvent
 	| IssueCommentedEvent
+	| DiscussionCreatedEvent
+	| DiscussionCommentedEvent
+	| PromptCreatedEvent
+	| PromptAcceptedEvent
+	| PromptClosedEvent
+	| PromptReopenedEvent
+	| PromptDeletedEvent
 	| RepoStarredEvent
 	| RepoUnstarredEvent
 	| RepoCreatedEvent

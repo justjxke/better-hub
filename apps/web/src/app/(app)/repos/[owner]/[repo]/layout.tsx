@@ -1,4 +1,5 @@
 import { getRepoPageData, getRepoTree, prefetchPRData } from "@/lib/github";
+import { countPromptRequests } from "@/lib/prompt-request-store";
 import { buildFileTree, type FileTreeNode } from "@/lib/file-tree";
 import { RepoSidebar } from "@/components/repo/repo-sidebar";
 import { RepoNav } from "@/components/repo/repo-nav";
@@ -68,6 +69,7 @@ function RepoErrorPage({ owner, repo, error }: { owner: string; repo: string; er
 			</div>
 			<a
 				href={githubUrl}
+				data-no-github-intercept
 				target="_blank"
 				rel="noopener noreferrer"
 				className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1.5 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
@@ -106,6 +108,7 @@ export default async function RepoLayout({
 		getCachedBranches(owner, repoName),
 		getCachedTags(owner, repoName),
 	]);
+	const promptCountPromise = countPromptRequests(owner, repoName, "open");
 
 	const pageDataResult = await pageDataPromise;
 	if (!pageDataResult.success) {
@@ -131,6 +134,8 @@ export default async function RepoLayout({
 
 	const [cachedTree, cachedContributors, cachedLanguages, cachedBranches, cachedTags] =
 		await cachePromise;
+
+	const promptRequestsCount = await promptCountPromise;
 
 	const cookieStore = await cookies();
 	const sidebarCookie = cookieStore.get(REPO_SIDEBAR_COOKIE);
@@ -219,6 +224,9 @@ export default async function RepoLayout({
 						openIssuesCount={navCounts.openIssues}
 						openPrsCount={navCounts.openPrs}
 						activeRunsCount={navCounts.activeRuns}
+						hasDiscussions={!!repoData.has_discussions}
+						discussionsCount={navCounts.discussions}
+						promptRequestsCount={promptRequestsCount}
 						showPeopleTab={showPeopleTab}
 					/>
 				</div>
