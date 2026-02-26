@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { prisma } from "../db";
 import { COST_TO_UNITS } from "./config";
 
-export const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
 
 export async function reportUsageToStripe(
 	usageLogId: string,
