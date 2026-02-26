@@ -13,6 +13,7 @@ import {
 	type AuthorDossierResult,
 	getCrossReferences,
 } from "@/lib/github";
+import { ogImageUrl, ogImages } from "@/lib/og/og-utils";
 import { extractParticipants } from "@/lib/github-utils";
 import { highlightDiffLines, type SyntaxToken } from "@/lib/shiki";
 import { PRHeader } from "@/components/pr/pr-header";
@@ -49,6 +50,8 @@ export async function generateMetadata({
 	const pullNumber = parseInt(numStr, 10);
 	const bundle = await getPullRequestBundle(owner, repo, pullNumber);
 
+	const ogUrl = ogImageUrl({ type: "pr", owner, repo, number: pullNumber });
+
 	if (!bundle) {
 		return { title: `PR #${pullNumber} · ${owner}/${repo}` };
 	}
@@ -58,7 +61,8 @@ export async function generateMetadata({
 		description: bundle.pr.body
 			? bundle.pr.body.slice(0, 200)
 			: `Pull request #${pullNumber} on ${owner}/${repo}`,
-		openGraph: { title: `${bundle.pr.title} · PR #${pullNumber}` },
+		openGraph: { title: `${bundle.pr.title} · PR #${pullNumber}`, ...ogImages(ogUrl) },
+		twitter: { card: "summary_large_image", ...ogImages(ogUrl) },
 	};
 }
 
