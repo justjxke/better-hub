@@ -2,7 +2,7 @@ import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
-import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 import { highlightCode } from "@/lib/shiki";
 import { toInternalUrl } from "@/lib/github-utils";
@@ -362,8 +362,8 @@ export async function renderMarkdownToHtml(
 	const result = await unified()
 		.use(remarkParse)
 		.use(remarkGfm)
-		.use(remarkRehype, { allowDangerousHtml: true })
-		.use(rehypeRaw)
+		.use(remarkRehype)
+		.use(rehypeSanitize)
 		.use(rehypeStringify)
 		.process(processed);
 
@@ -385,7 +385,9 @@ export async function renderMarkdownToHtml(
 	}
 
 	html = processAlerts(html);
+
 	html = addHeadingAnchors(html);
+
 	html = markBadgeParagraphs(html);
 
 	if (repoContext) {
