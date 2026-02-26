@@ -9,6 +9,11 @@ export async function POST() {
 		return new Response("Unauthorized", { status: 401 });
 	}
 
-	await grantSignupCredits(session.user.id);
-	return Response.json({ ok: true });
+	try {
+		await grantSignupCredits(session.user.id);
+		return Response.json({ ok: true });
+	} catch (e) {
+		console.error("[billing] grantSignupCredits failed:", e);
+		return Response.json({ error: "Failed to grant credits" }, { status: 500 });
+	}
 }
