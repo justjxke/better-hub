@@ -3348,21 +3348,17 @@ export async function POST(req: Request) {
 			headers: { Authorization: `Bearer ${apiKey}` },
 		});
 		if (!checkRes.ok) {
-			// If user's own key is invalid, fall back to the server key
-			if (usingOwnKey && serverApiKey) {
-				apiKey = serverApiKey;
-				usingOwnKey = false;
-			} else {
-				return new Response(
-					JSON.stringify({
-						error: "OpenRouter API key is invalid or expired. Please update your API key in settings.",
-					}),
-					{
-						status: 401,
-						headers: { "Content-Type": "application/json" },
-					},
-				);
-			}
+			return new Response(
+				JSON.stringify({
+					error: usingOwnKey
+						? "Your OpenRouter API key is invalid or expired. Please update it in settings."
+						: "OpenRouter API key is invalid or expired.",
+				}),
+				{
+					status: 401,
+					headers: { "Content-Type": "application/json" },
+				},
+			);
 		}
 	} catch {
 		// Network error validating key — proceed anyway
