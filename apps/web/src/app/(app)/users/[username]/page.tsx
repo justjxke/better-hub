@@ -5,9 +5,11 @@ import {
 	getUserPublicOrgs,
 	getUserOrgTopRepos,
 	getContributionData,
+	getUserBadges,
 } from "@/lib/github";
 import { UserProfileContent } from "@/components/users/user-profile-content";
 import { ExternalLink, User } from "lucide-react";
+import type { UserBadge } from "@/components/users/user-badges";
 
 function UnknownUserPage({ username }: { username: string }) {
 	const githubUrl = `https://github.com/${encodeURIComponent(username)}`;
@@ -62,6 +64,7 @@ export default async function UserProfilePage({
 	let orgsData: Awaited<ReturnType<typeof getUserPublicOrgs>> = [];
 	let contributionData: Awaited<ReturnType<typeof getContributionData>> = null;
 	let orgTopRepos: Awaited<ReturnType<typeof getUserOrgTopRepos>> = [];
+	let badgesData: UserBadge[] = [];
 
 	try {
 		userData = await getUser(username);
@@ -77,10 +80,11 @@ export default async function UserProfilePage({
 	if (!isBot) {
 		try {
 			const resolvedLogin = userData.login;
-			[reposData, orgsData, contributionData] = await Promise.all([
+			[reposData, orgsData, contributionData, badgesData] = await Promise.all([
 				getUserPublicRepos(resolvedLogin, 100),
 				getUserPublicOrgs(resolvedLogin),
 				getContributionData(resolvedLogin),
+				getUserBadges(resolvedLogin),
 			]);
 			// Fetch top repos from the user's orgs (for scoring)
 			if (orgsData.length > 0) {
@@ -139,6 +143,7 @@ export default async function UserProfilePage({
 				forks_count: r.forks_count,
 				language: r.language,
 			}))}
+			badges={badgesData}
 		/>
 	);
 }
