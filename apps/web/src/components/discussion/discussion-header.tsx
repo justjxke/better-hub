@@ -8,7 +8,7 @@ import { TimeAgo } from "@/components/ui/time-ago";
 interface DiscussionHeaderProps {
 	title: string;
 	number: number;
-	category: { name: string; emoji: string; emojiHTML?: string | null; isAnswerable: boolean };
+	category: { name: string; emojiHTML?: string | null; isAnswerable: boolean };
 	isAnswered: boolean;
 	upvoteCount: number;
 	author: { login: string; avatar_url: string } | null;

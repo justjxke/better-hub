@@ -3304,7 +3304,6 @@ export interface RepoIssueNode {
 export interface DiscussionCategory {
 	id: string;
 	name: string;
-	emoji: string;
 	emojiHTML?: string | null;
 	description: string;
 	isAnswerable: boolean;
@@ -3317,7 +3316,7 @@ export interface RepoDiscussionNode {
 	createdAt: string;
 	updatedAt: string;
 	author: { login: string; avatar_url: string } | null;
-	category: { name: string; emoji: string; emojiHTML?: string | null; isAnswerable: boolean };
+	category: { name: string; emojiHTML?: string | null; isAnswerable: boolean };
 	commentsCount: number;
 	upvoteCount: number;
 	isAnswered: boolean;
@@ -3365,7 +3364,7 @@ export interface DiscussionDetail {
 	createdAt: string;
 	updatedAt: string;
 	author: { login: string; avatar_url: string } | null;
-	category: { name: string; emoji: string; emojiHTML?: string | null; isAnswerable: boolean };
+	category: { name: string; emojiHTML?: string | null; isAnswerable: boolean };
 	commentsCount: number;
 	upvoteCount: number;
 	isAnswered: boolean;
@@ -3392,7 +3391,7 @@ const DISCUSSIONS_PAGE_GRAPHQL = `
 					createdAt
 					updatedAt
 					author { login avatarUrl }
-					category { name emoji emojiHTML isAnswerable }
+					category { name emojiHTML isAnswerable }
 					comments { totalCount }
 					upvoteCount
 					isAnswered
@@ -3404,7 +3403,6 @@ const DISCUSSIONS_PAGE_GRAPHQL = `
 				nodes {
 					id
 					name
-					emoji
 					emojiHTML
 					description
 					isAnswerable
@@ -3425,7 +3423,7 @@ const DISCUSSION_DETAIL_GRAPHQL = `
 				createdAt
 				updatedAt
 				author { __typename login avatarUrl }
-				category { name emoji emojiHTML isAnswerable }
+				category { name emojiHTML isAnswerable }
 				comments(first: 50) {
 					totalCount
 					nodes {
@@ -3481,7 +3479,7 @@ interface GQLDiscussionNode {
 	createdAt: string;
 	updatedAt: string;
 	author: { login: string; avatarUrl: string } | null;
-	category: { name: string; emoji: string; emojiHTML?: string | null; isAnswerable: boolean };
+	category: { name: string; emojiHTML?: string | null; isAnswerable: boolean };
 	comments?: { totalCount: number };
 	upvoteCount: number;
 	isAnswered: boolean;
@@ -3530,7 +3528,6 @@ function mapGQLDiscussionNode(node: GQLDiscussionNode): RepoDiscussionNode {
 		author: mapGQLAuthor(node.author),
 		category: {
 			name: node.category.name,
-			emoji: node.category.emoji,
 			emojiHTML: node.category.emojiHTML ?? null,
 			isAnswerable: node.category.isAnswerable,
 		},
@@ -3606,14 +3603,12 @@ async function fetchRepoDiscussionsPageGraphQL(
 			(c: {
 				id: string;
 				name: string;
-				emoji: string;
 				emojiHTML?: string | null;
 				description: string;
 				isAnswerable: boolean;
 			}) => ({
 				id: c.id,
 				name: c.name,
-				emoji: c.emoji,
 				emojiHTML: c.emojiHTML ?? null,
 				description: c.description,
 				isAnswerable: c.isAnswerable,
@@ -3660,7 +3655,6 @@ async function fetchDiscussionDetailGraphQL(
 		author: mapGQLAuthor(d.author),
 		category: {
 			name: d.category.name,
-			emoji: d.category.emoji,
 			emojiHTML: d.category.emojiHTML ?? null,
 			isAnswerable: d.category.isAnswerable,
 		},

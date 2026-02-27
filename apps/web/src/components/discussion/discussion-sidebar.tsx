@@ -4,7 +4,7 @@ import { GitHubEmoji } from "@/components/shared/github-emoji";
 import { TimeAgo } from "@/components/ui/time-ago";
 
 interface DiscussionSidebarProps {
-	category: { name: string; emoji: string; emojiHTML?: string | null; isAnswerable: boolean };
+	category: { name: string; emojiHTML?: string | null; isAnswerable: boolean };
 	labels: Array<{ name?: string; color?: string }>;
 	isAnswered: boolean;
 	answerChosenAt: string | null;
