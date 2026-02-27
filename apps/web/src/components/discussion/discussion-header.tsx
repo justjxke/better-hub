@@ -39,10 +39,7 @@ export function DiscussionHeader({
 			<div className="flex items-center gap-3 flex-wrap">
 				{/* Category pill */}
 				<span className="text-[11px] font-mono px-2 py-0.5 rounded-full border border-border/60 text-muted-foreground/70">
-					<GitHubEmoji
-						emoji={category.emoji}
-						emojiHTML={category.emojiHTML}
-					/>{" "}
+					<GitHubEmoji emojiHTML={category.emojiHTML} />{" "}
 					{category.name}
 				</span>
 

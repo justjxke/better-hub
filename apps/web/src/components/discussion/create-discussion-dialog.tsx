@@ -323,9 +323,6 @@ export function CreateDiscussionDialog({
 									{selectedCategory ? (
 										<>
 											<GitHubEmoji
-												emoji={
-													selectedCategory.emoji
-												}
 												emojiHTML={
 													selectedCategory.emojiHTML
 												}
@@ -377,9 +374,6 @@ export function CreateDiscussionDialog({
 														>
 															<span className="text-sm shrink-0">
 																<GitHubEmoji
-																	emoji={
-																		cat.emoji
-																	}
 																	emojiHTML={
 																		cat.emojiHTML
 																	}

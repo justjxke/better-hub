@@ -39,10 +39,7 @@ export function DiscussionSidebar({
 					</span>
 				</SectionHeading>
 				<span className="text-xs font-mono text-foreground/70 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-border/60">
-					<GitHubEmoji
-						emoji={category.emoji}
-						emojiHTML={category.emojiHTML}
-					/>{" "}
+					<GitHubEmoji emojiHTML={category.emojiHTML} />{" "}
 					{category.name}
 				</span>
 				{category.isAnswerable && (

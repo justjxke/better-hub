@@ -146,10 +146,7 @@ export function DiscussionsList({
 									: "border-border/60 text-muted-foreground/60 hover:text-foreground hover:border-foreground/20",
 							)}
 						>
-							<GitHubEmoji
-								emoji={cat.emoji}
-								emojiHTML={cat.emojiHTML}
-							/>{" "}
+							<GitHubEmoji emojiHTML={cat.emojiHTML} />{" "}
 							{cat.name}
 						</button>
 					))}
@@ -278,10 +275,7 @@ function DiscussionRow({
 					</span>
 					{/* Category pill */}
 					<span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full border border-border/60 text-muted-foreground/60 whitespace-nowrap">
-						<GitHubEmoji
-							emoji={d.category.emoji}
-							emojiHTML={d.category.emojiHTML}
-						/>{" "}
+						<GitHubEmoji emojiHTML={d.category.emojiHTML} />{" "}
 						{d.category.name}
 					</span>
 					{d.isAnswered && (
