@@ -71,23 +71,37 @@ export function parseRefAndPath(
 	pathSegments: string[],
 	branchNames: string[],
 ): { ref: string; path: string } {
+	// Decode URI-encoded segments (Next.js may keep [ ] encoded); fall back to raw segment when encoding is malformed.
+	const decodedPathSegments = pathSegments.map((s) => {
+		try {
+			return decodeURIComponent(s);
+		} catch {
+			return s;
+		}
+	});
 	// Sort branches by length (longest first) for greedy matching
 	const sorted = [...branchNames].sort((a, b) => b.length - a.length);
-	const joined = pathSegments.join("/");
 
 	for (const branch of sorted) {
 		const branchParts = branch.split("/");
-		if (pathSegments.length >= branchParts.length) {
-			const candidate = pathSegments.slice(0, branchParts.length).join("/");
+		if (decodedPathSegments.length >= branchParts.length) {
+			const candidate = decodedPathSegments
+				.slice(0, branchParts.length)
+				.join("/");
 			if (candidate === branch) {
-				const remaining = pathSegments.slice(branchParts.length).join("/");
+				const remaining = decodedPathSegments
+					.slice(branchParts.length)
+					.join("/");
 				return { ref: branch, path: remaining };
 			}
 		}
 	}
 
 	// Default: first segment is the ref
-	return { ref: pathSegments[0] || "main", path: pathSegments.slice(1).join("/") };
+	return {
+		ref: decodedPathSegments[0] || "main",
+		path: decodedPathSegments.slice(1).join("/"),
+	};
 }
 
 export function toInternalUrl(htmlUrl: string): string {
@@ -212,11 +226,11 @@ export function parseGitHubUrl(htmlUrl: string): ParsedGitHubUrl | null {
 		const parts = url.pathname.split("/").filter(Boolean);
 		if (parts.length === 0) return null;
 
+		if (GITHUB_NON_USER_PATHS.has(parts[0].toLowerCase())) return null;
+
 		// Single segment: github.com/username
 		if (parts.length === 1) {
-			const name = parts[0];
-			if (GITHUB_NON_USER_PATHS.has(name.toLowerCase())) return null;
-			return { owner: name, type: "user" };
+			return { owner: parts[0], type: "user" };
 		}
 
 		const [owner, repo, ...rest] = parts;
