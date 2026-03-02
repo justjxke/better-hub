@@ -1,6 +1,17 @@
 "use client";
 
 import type { NotificationStatusKind } from "@/lib/github-types";
+import {
+	AlertTriangle,
+	AtSign,
+	CheckCircle2,
+	GitPullRequest,
+	Info,
+	LoaderCircle,
+	MessageSquare,
+	ShieldAlert,
+} from "lucide-react";
+import type { ComponentType } from "react";
 import { cn } from "@/lib/utils";
 
 const labels: Record<NotificationStatusKind, string> = {
@@ -16,15 +27,27 @@ const labels: Record<NotificationStatusKind, string> = {
 };
 
 const tones: Record<NotificationStatusKind, string> = {
-	failed: "border-destructive/40 text-destructive bg-destructive/10",
-	running: "border-warning/40 text-warning bg-warning/10",
-	passed: "border-success/40 text-success bg-success/10",
-	review_requested: "border-warning/30 text-warning bg-warning/10",
-	mention: "border-foreground/20 text-foreground/80 bg-muted/60",
-	comment: "border-border text-muted-foreground bg-muted/40",
-	security: "border-destructive/30 text-destructive bg-destructive/10",
-	state_change: "border-border text-muted-foreground bg-muted/40",
-	info: "border-border text-muted-foreground bg-muted/40",
+	failed: "border-destructive/25 text-destructive/90 bg-destructive/[0.08]",
+	running: "border-warning/25 text-warning/90 bg-warning/[0.08]",
+	passed: "border-success/25 text-success/90 bg-success/[0.08]",
+	review_requested: "border-warning/20 text-warning/85 bg-warning/[0.08]",
+	mention: "border-foreground/15 text-foreground/75 bg-muted/35",
+	comment: "border-border/60 text-muted-foreground/75 bg-muted/25",
+	security: "border-destructive/20 text-destructive/85 bg-destructive/[0.08]",
+	state_change: "border-border/60 text-muted-foreground/75 bg-muted/25",
+	info: "border-border/60 text-muted-foreground/75 bg-muted/25",
+};
+
+const icons: Record<NotificationStatusKind, ComponentType<{ className?: string }>> = {
+	failed: AlertTriangle,
+	running: LoaderCircle,
+	passed: CheckCircle2,
+	review_requested: GitPullRequest,
+	mention: AtSign,
+	comment: MessageSquare,
+	security: ShieldAlert,
+	state_change: Info,
+	info: Info,
 };
 
 export function NotificationStatusChip({
@@ -34,14 +57,21 @@ export function NotificationStatusChip({
 	kind: NotificationStatusKind;
 	className?: string;
 }) {
+	const Icon = icons[kind];
 	return (
 		<span
 			className={cn(
-				"inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide",
+				"inline-flex min-w-[68px] items-center justify-center gap-1 rounded-md border px-1 py-0.5 text-[9px] font-mono uppercase tracking-wide",
 				tones[kind],
 				className,
 			)}
 		>
+			<Icon
+				className={cn(
+					"h-2.5 w-2.5",
+					kind === "running" ? "animate-spin" : "",
+				)}
+			/>
 			{labels[kind]}
 		</span>
 	);
