@@ -710,12 +710,44 @@ async function fetchContributionsFromGitHub(token: string, username: string) {
 	return json.data?.user?.contributionsCollection?.contributionCalendar ?? null;
 }
 
-async function fetchStarredReposFromGitHub(octokit: Octokit, perPage: number) {
+function isStarredRepoEnvelope(item: unknown): item is { repo: UserPublicRepo } {
+	return (
+		typeof item === "object" &&
+		item !== null &&
+		"repo" in item &&
+		typeof (item as { repo?: unknown }).repo === "object" &&
+		(item as { repo?: unknown }).repo !== null
+	);
+}
+
+function normalizeStarredRepos(items: unknown[]): UserPublicRepo[] {
+	return items.map((item) =>
+		isStarredRepoEnvelope(item) ? item.repo : (item as UserPublicRepo),
+	);
+}
+
+async function fetchStarredReposFromGitHub(
+	octokit: Octokit,
+	perPage: number,
+): Promise<UserPublicRepo[]> {
 	const { data } = await octokit.activity.listReposStarredByAuthenticatedUser({
 		per_page: perPage,
 		sort: "updated",
 	});
-	return data;
+	return normalizeStarredRepos(data);
+}
+
+async function fetchUserStarredReposFromGitHub(
+	octokit: Octokit,
+	username: string,
+	perPage: number,
+): Promise<UserPublicRepo[]> {
+	const { data } = await octokit.activity.listReposStarredByUser({
+		username,
+		per_page: perPage,
+		sort: "updated",
+	});
+	return normalizeStarredRepos(data);
 }
 
 async function fetchTrendingReposFromGitHub(
@@ -2793,7 +2825,7 @@ export async function getContributionData(username: string) {
 	});
 }
 
-export async function getStarredRepos(perPage = 10) {
+export async function getStarredRepos(perPage = 10): Promise<UserPublicRepo[]> {
 	const authCtx = await getGitHubAuthContext();
 	return readLocalFirstGitData({
 		authCtx,
@@ -2804,6 +2836,15 @@ export async function getStarredRepos(perPage = 10) {
 		jobPayload: { perPage },
 		fetchRemote: (octokit) => fetchStarredReposFromGitHub(octokit, perPage),
 	});
+}
+
+export async function getUserStarredRepos(
+	username: string,
+	perPage = 50,
+): Promise<UserPublicRepo[]> {
+	const authCtx = await getGitHubAuthContext();
+	if (!authCtx) return [];
+	return fetchUserStarredReposFromGitHub(authCtx.octokit, username, perPage);
 }
 
 export async function getTrendingRepos(
@@ -2980,6 +3021,19 @@ export async function getRepoTagsPage(owner: string, repo: string, page: number)
 export async function getRepoReleaseByTag(owner: string, repo: string, tag: string) {
 	const authCtx = await getGitHubAuthContext();
 	if (!authCtx?.octokit) return null;
+
+	if (tag === "latest") {
+		try {
+			const { data } = await authCtx.octokit.repos.getLatestRelease({
+				owner,
+				repo,
+			});
+			return data;
+		} catch {
+			return null;
+		}
+	}
+
 	try {
 		const { data } = await authCtx.octokit.repos.getReleaseByTag({ owner, repo, tag });
 		return data;
@@ -3388,8 +3442,8 @@ const PR_BUNDLE_QUERY = `
             commit {
               oid
               message
-              author { name date }
-              committer { name date }
+              author { name date user { login avatarUrl } }
+              committer { name date user { login avatarUrl } }
             }
             resourcePath
           }
@@ -3513,8 +3567,16 @@ interface GQLCommitNode {
 	commit: {
 		oid: string;
 		message: string;
-		author: { name: string; date: string } | null;
-		committer: { name: string; date: string } | null;
+		author: {
+			name: string;
+			date: string;
+			user?: { login: string; avatarUrl: string } | null;
+		} | null;
+		committer: {
+			name: string;
+			date: string;
+			user?: { login: string; avatarUrl: string } | null;
+		} | null;
 	};
 	resourcePath: string;
 }
@@ -3673,6 +3735,8 @@ function transformGraphQLPRBundle(node: GQLPRNode): PRBundleData {
 
 	const commits = (node.commits?.nodes ?? []).map((n) => {
 		const c = n.commit;
+		const authorUser = c.author?.user;
+		const committerUser = c.committer?.user;
 		return {
 			sha: c.oid,
 			commit: {
@@ -3684,7 +3748,15 @@ function transformGraphQLPRBundle(node: GQLPRNode): PRBundleData {
 					? { name: c.committer.name, date: c.committer.date }
 					: null,
 			},
-			author: null,
+			author: authorUser
+				? { login: authorUser.login, avatar_url: authorUser.avatarUrl }
+				: null,
+			committer: committerUser
+				? {
+						login: committerUser.login,
+						avatar_url: committerUser.avatarUrl,
+					}
+				: null,
 		};
 	});
 	type PRStateEvent = PRBundleData["stateEvents"][number]["event"];
@@ -6462,10 +6534,10 @@ export async function getOrgMembers(org: string, perPage = 100) {
  * GitHub stats endpoints return 202 while computing data in the background.
  * Retry with exponential backoff until we get a 200 with actual data.
  */
-async function retryStatsRequest<T>(
-	request: () => Promise<{ status: number; data: T }>,
+async function retryStatsRequest<T extends { status: number; data: unknown }>(
+	request: () => Promise<T>,
 	maxRetries = 4,
-): Promise<{ status: number; data: T }> {
+): Promise<T> {
 	let response = await request();
 	let attempt = 0;
 	while (response.status === 202 && attempt < maxRetries) {
