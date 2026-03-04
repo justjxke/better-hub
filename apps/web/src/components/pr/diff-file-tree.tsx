@@ -359,17 +359,17 @@ const DiffTreeNode = memo(function DiffTreeNode({
 							className={cn(
 								"w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors cursor-pointer",
 								allViewed
-									? "bg-success border-success"
+									? "bg-primary border-primary"
 									: someViewed
-										? "border-success bg-success/30"
+										? "border-primary bg-primary/30"
 										: "border-muted-foreground/40 hover:border-muted-foreground/60",
 							)}
 						>
 							{allViewed && (
-								<Check className="w-2.5 h-2.5 text-success-foreground" />
+								<Check className="w-2.5 h-2.5 text-primary-foreground" />
 							)}
 							{someViewed && !allViewed && (
-								<span className="w-1.5 h-1.5 bg-success rounded-sm" />
+								<span className="w-1.5 h-1.5 bg-primary rounded-sm" />
 							)}
 						</span>
 					</button>
@@ -471,12 +471,12 @@ const DiffTreeNode = memo(function DiffTreeNode({
 					className={cn(
 						"w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors cursor-pointer",
 						isViewed
-							? "bg-success border-success"
+							? "bg-primary border-primary"
 							: "border-muted-foreground/40 hover:border-muted-foreground/60",
 					)}
 				>
 					{isViewed && (
-						<Check className="w-2.5 h-2.5 text-success-foreground" />
+						<Check className="w-2.5 h-2.5 text-primary-foreground" />
 					)}
 				</span>
 			</button>
