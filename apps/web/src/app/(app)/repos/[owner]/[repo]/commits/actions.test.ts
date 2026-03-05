@@ -23,6 +23,12 @@ describe("fetchLatestCommit", () => {
 		const result = await fetchLatestCommit("owner", "empty-repo");
 
 		expect(result).toBeNull();
-		expect(getRepoCommitsMock).toHaveBeenCalledWith("owner", "empty-repo", undefined, 1, 1);
+		expect(getRepoCommitsMock).toHaveBeenCalledWith(
+			"owner",
+			"empty-repo",
+			undefined,
+			1,
+			1,
+		);
 	});
 });
