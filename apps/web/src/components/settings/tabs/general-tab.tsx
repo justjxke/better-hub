@@ -85,11 +85,24 @@ const RADIUS_OPTIONS: { id: BorderRadiusPreset; label: string; description: stri
 	{ id: "large", label: "Large", description: "Soft & rounded" },
 ];
 
-export function GeneralTab({
-	settings: _settings,
-	onUpdate: _onUpdate,
-	onThemeTransition,
-}: GeneralTabProps) {
+const WORKSPACE_TAB_OPTIONS: {
+	id: "dashboard" | "duplicate";
+	label: string;
+	description: string;
+}[] = [
+	{
+		id: "dashboard",
+		label: "Open dashboard",
+		description: "Start each new tab from your dashboard",
+	},
+	{
+		id: "duplicate",
+		label: "Duplicate current tab",
+		description: "Copy the current tab when opening a new one",
+	},
+];
+
+export function GeneralTab({ settings, onUpdate, onThemeTransition }: GeneralTabProps) {
 	const { themeId, mode, borderRadius, setTheme, toggleMode, setBorderRadius, themes } =
 		useColorTheme();
 
@@ -171,6 +184,52 @@ export function GeneralTab({
 					mode={mode}
 					onSelect={handleSetTheme}
 				/>
+			</div>
+
+			{/* Workspace Tabs */}
+			<div className="px-4 py-4">
+				<label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+					Workspace Tabs
+				</label>
+				<p className="text-[11px] text-muted-foreground/60 mt-0.5 mb-3">
+					Choose what happens when you open a new workspace tab.
+				</p>
+				<div className="flex flex-wrap gap-2">
+					{WORKSPACE_TAB_OPTIONS.map((option) => {
+						const isActive =
+							settings.workspaceNewTabBehavior ===
+							option.id;
+						return (
+							<button
+								key={option.id}
+								onClick={() =>
+									onUpdate({
+										workspaceNewTabBehavior:
+											option.id,
+									})
+								}
+								className={cn(
+									"flex items-center gap-2.5 px-3 py-2 border text-sm transition-colors",
+									isActive
+										? "border-foreground/30 bg-muted/50"
+										: "border-border hover:border-foreground/10",
+								)}
+							>
+								<div className="flex flex-col items-start">
+									<span className="text-xs font-mono font-medium">
+										{option.label}
+									</span>
+									<span className="text-[10px] text-muted-foreground/60">
+										{option.description}
+									</span>
+								</div>
+								{isActive && (
+									<Check className="size-3.5 text-success shrink-0" />
+								)}
+							</button>
+						);
+					})}
+				</div>
 			</div>
 
 			{/* Border Radius */}

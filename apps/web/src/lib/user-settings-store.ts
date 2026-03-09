@@ -15,6 +15,7 @@ export interface UserSettings {
 	codeFont: string;
 	codeFontSize: number;
 	onboardingDone: boolean;
+	workspaceNewTabBehavior: "dashboard" | "duplicate";
 	updatedAt: string;
 }
 
@@ -33,8 +34,12 @@ function toSettings(row: {
 	codeFont: string;
 	codeFontSize: number;
 	onboardingDone: boolean;
+	workspaceNewTabBehavior?: string | null;
 	updatedAt: string;
 }): UserSettings {
+	const workspaceNewTabBehavior =
+		row.workspaceNewTabBehavior === "duplicate" ? "duplicate" : "dashboard";
+
 	return {
 		userId: row.userId,
 		displayName: row.displayName,
@@ -50,6 +55,7 @@ function toSettings(row: {
 		codeFont: row.codeFont ?? "default",
 		codeFontSize: row.codeFontSize ?? 13,
 		onboardingDone: row.onboardingDone ?? false,
+		workspaceNewTabBehavior,
 		updatedAt: row.updatedAt,
 	};
 }
@@ -89,6 +95,7 @@ export async function updateUserSettings(
 			| "codeFont"
 			| "codeFontSize"
 			| "onboardingDone"
+			| "workspaceNewTabBehavior"
 		>
 	>,
 ): Promise<UserSettings> {
@@ -116,6 +123,8 @@ export async function updateUserSettings(
 	if (updates.codeFont !== undefined) data.codeFont = updates.codeFont;
 	if (updates.codeFontSize !== undefined) data.codeFontSize = updates.codeFontSize;
 	if (updates.onboardingDone !== undefined) data.onboardingDone = updates.onboardingDone;
+	if (updates.workspaceNewTabBehavior !== undefined)
+		data.workspaceNewTabBehavior = updates.workspaceNewTabBehavior;
 
 	const updated = await prisma.userSettings.update({
 		where: { userId },
