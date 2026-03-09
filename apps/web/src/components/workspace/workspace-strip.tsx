@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { useWorkspaceDnd } from "@/components/workspace/use-workspace-dnd";
 import { useWorkspaceTabs } from "@/components/workspace/workspace-provider";
 import type { WorkspaceTab } from "@/components/workspace/workspace-types";
 import { cn } from "@/lib/utils";
@@ -26,8 +27,16 @@ export function WorkspaceStrip() {
 		openHrefInNewTab,
 		duplicateCurrentTab,
 		setFolderExpanded,
+		applyWorkspaceDndIntent,
 	} = useWorkspaceTabs();
 	const [newTabBehavior, setNewTabBehavior] = useState<WorkspaceNewTabBehavior>("dashboard");
+	const {
+		draggingTabId,
+		getTabDragHandlers,
+		getReorderDropHandlers,
+		getTabDropHandlers,
+		getFolderDropHandlers,
+	} = useWorkspaceDnd({ onIntent: applyWorkspaceDndIntent });
 
 	useEffect(() => {
 		let cancelled = false;
@@ -114,13 +123,31 @@ export function WorkspaceStrip() {
 	return (
 		<div className="flex items-center gap-1 overflow-x-auto border-b border-border bg-background/95 px-2 py-1.5 sm:px-4">
 			{rootTabs.map((tab) => (
-				<WorkspaceStripItem
-					key={tab.id}
-					tab={tab}
-					active={tab.id === activeTabId}
-					onSelect={handleSelectTab}
-				/>
+				<Fragment key={`root-${tab.id}`}>
+					<div
+						{...getReorderDropHandlers(tab.id)}
+						className="h-7 w-2.5 shrink-0 rounded-sm"
+					/>
+					<div
+						{...getTabDragHandlers(tab.id)}
+						{...getTabDropHandlers(tab.id)}
+						className={cn(
+							"shrink-0",
+							draggingTabId === tab.id && "opacity-60",
+						)}
+					>
+						<WorkspaceStripItem
+							tab={tab}
+							active={tab.id === activeTabId}
+							onSelect={handleSelectTab}
+						/>
+					</div>
+				</Fragment>
 			))}
+			<div
+				{...getReorderDropHandlers(null)}
+				className="h-7 w-2.5 shrink-0 rounded-sm"
+			/>
 			{sortedFolders.map((folder) => {
 				const expanded = !folder.collapsed;
 				const folderTabs = tabsByFolderId.get(folder.id) ?? [];
@@ -134,28 +161,43 @@ export function WorkspaceStrip() {
 
 				return (
 					<div key={folder.id} className="flex items-center gap-1">
-						<WorkspaceStripFolderItem
-							folder={folder}
-							expanded={expanded}
-							onToggle={(_, nextExpanded) =>
-								setFolderExpanded(
-									folder.id,
-									nextExpanded,
-								)
-							}
-						/>
-						{visibleFolderTabs.map((tab) => (
-							<WorkspaceStripItem
-								key={tab.id}
-								tab={tab}
-								active={tab.id === activeTabId}
-								onSelect={handleSelectTab}
-								folderTintColor={
-									expanded
-										? folder.color
-										: undefined
+						<div {...getFolderDropHandlers(folder.id)}>
+							<WorkspaceStripFolderItem
+								folder={folder}
+								expanded={expanded}
+								onToggle={(_, nextExpanded) =>
+									setFolderExpanded(
+										folder.id,
+										nextExpanded,
+									)
 								}
 							/>
+						</div>
+						{visibleFolderTabs.map((tab) => (
+							<div
+								key={tab.id}
+								{...getTabDragHandlers(tab.id)}
+								{...getTabDropHandlers(tab.id)}
+								className={cn(
+									"shrink-0",
+									draggingTabId === tab.id &&
+										"opacity-60",
+								)}
+							>
+								<WorkspaceStripItem
+									tab={tab}
+									active={
+										tab.id ===
+										activeTabId
+									}
+									onSelect={handleSelectTab}
+									folderTintColor={
+										expanded
+											? folder.color
+											: undefined
+									}
+								/>
+							</div>
 						))}
 					</div>
 				);

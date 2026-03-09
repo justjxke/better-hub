@@ -10,6 +10,7 @@ import {
 	type ReactNode,
 } from "react";
 import { classifyWorkspaceRoute, getWorkspaceTabTitle } from "@/lib/workspace-route";
+import { applyWorkspaceDndIntentToSession, type WorkspaceDndIntent } from "./use-workspace-dnd";
 import {
 	DEFAULT_WORKSPACE_LAYOUT,
 	type WorkspaceFolder,
@@ -48,6 +49,7 @@ interface WorkspaceTabsContextValue {
 	updateFolderMeta: (folderId: string, patch: WorkspaceFolderMetaPatch) => void;
 	deleteFolderKeepTabs: (folderId: string) => void;
 	deleteFolderRemoveTabs: (folderId: string) => void;
+	applyWorkspaceDndIntent: (intent: WorkspaceDndIntent) => void;
 }
 
 const WorkspaceTabsContext = createContext<WorkspaceTabsContextValue | null>(null);
@@ -417,6 +419,10 @@ export function WorkspaceProvider({ children, initialSession }: WorkspaceProvide
 		});
 	}, []);
 
+	const applyWorkspaceDndIntent = useCallback((intent: WorkspaceDndIntent) => {
+		setSession((prev) => applyWorkspaceDndIntentToSession(prev, intent));
+	}, []);
+
 	useEffect(() => {
 		if (!hasMountedRef.current) {
 			hasMountedRef.current = true;
@@ -463,6 +469,7 @@ export function WorkspaceProvider({ children, initialSession }: WorkspaceProvide
 				updateFolderMeta,
 				deleteFolderKeepTabs,
 				deleteFolderRemoveTabs,
+				applyWorkspaceDndIntent,
 			}}
 		>
 			{children}
