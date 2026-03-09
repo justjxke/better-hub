@@ -12,6 +12,7 @@ import { NavigationProgress } from "@/components/shared/navigation-progress";
 import { ColorThemeProvider } from "@/components/theme/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WorkspaceProvider } from "@/components/workspace/workspace-provider";
+import { WorkspaceStrip } from "@/components/workspace/workspace-strip";
 import { type GhostTabState } from "@/lib/chat-store";
 import { getServerSession } from "@/lib/auth";
 import { getNotifications, checkIsStarred } from "@/lib/github";
@@ -70,7 +71,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 							<GitHubLinkInterceptor>
 								<TooltipProvider>
 									<NavigationProgress />
-									<div className="flex h-dvh flex-col overflow-y-auto lg:overflow-hidden">
+									<div className="flex h-dvh flex-col overflow-hidden">
 										<AppNavbar
 											session={
 												session
@@ -79,7 +80,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 												notifications
 											}
 										/>
-										<div className="mt-10 flex flex-col overflow-x-hidden px-2 pt-2 sm:px-4 lg:h-[calc(100dvh-var(--spacing)*10)] lg:overflow-auto">
+										<div className="mt-10 shrink-0">
+											<WorkspaceStrip />
+										</div>
+										<div className="flex min-h-0 flex-1 flex-col overflow-auto overflow-x-hidden px-2 pt-2 sm:px-4">
 											{children}
 										</div>
 										<Suspense>

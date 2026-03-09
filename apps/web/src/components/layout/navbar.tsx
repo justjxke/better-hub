@@ -33,6 +33,7 @@ import type { TabId } from "@/components/settings/settings-content";
 import { NavbarGhostButton } from "@/components/shared/floating-ghost-button";
 import { useMutationEvents } from "@/components/shared/mutation-event-provider";
 import { NotificationSheet } from "@/components/layout/notification-sheet";
+import { WorkspaceToggleButton } from "@/components/workspace/workspace-toggle-button";
 import { $Session } from "@/lib/auth";
 import type { NotificationItem } from "@/lib/github-types";
 
@@ -99,6 +100,9 @@ export function AppNavbar({ session, notifications }: AppNavbarProps) {
 				<div className="flex items-center gap-1.5">
 					{/* Ghost AI button */}
 					<NavbarGhostButton />
+
+					{/* Workspace strip toggle */}
+					<WorkspaceToggleButton />
 
 					{/* Notifications bell */}
 					<button
