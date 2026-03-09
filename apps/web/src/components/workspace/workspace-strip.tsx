@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useWorkspaceTabs } from "@/components/workspace/workspace-provider";
 import type { WorkspaceTab } from "@/components/workspace/workspace-types";
 import { cn } from "@/lib/utils";
-import { WorkspaceStripItem } from "./workspace-strip-item";
+import { WorkspaceStripFolderItem, WorkspaceStripItem } from "./workspace-strip-item";
 
 type WorkspaceNewTabBehavior = "dashboard" | "duplicate";
 
@@ -17,8 +17,16 @@ interface UserSettingsResponse {
 export function WorkspaceStrip() {
 	const router = useRouter();
 	const pathname = usePathname();
-	const { stripOpen, tabs, activeTabId, activateTab, openHrefInNewTab, duplicateCurrentTab } =
-		useWorkspaceTabs();
+	const {
+		stripOpen,
+		tabs,
+		folders,
+		activeTabId,
+		activateTab,
+		openHrefInNewTab,
+		duplicateCurrentTab,
+		setFolderExpanded,
+	} = useWorkspaceTabs();
 	const [newTabBehavior, setNewTabBehavior] = useState<WorkspaceNewTabBehavior>("dashboard");
 
 	useEffect(() => {
@@ -41,6 +49,31 @@ export function WorkspaceStrip() {
 			cancelled = true;
 		};
 	}, []);
+
+	const { rootTabs, sortedFolders, tabsByFolderId } = useMemo(() => {
+		const sortedTabs = [...tabs].sort((a, b) => a.position - b.position);
+		const sorted = [...folders].sort((a, b) => a.position - b.position);
+		const folderIds = new Set(sorted.map((folder) => folder.id));
+		const grouped = new Map<string, WorkspaceTab[]>();
+		const root: WorkspaceTab[] = [];
+
+		for (const tab of sortedTabs) {
+			const folderId = tab.parentFolderId;
+			if (folderId && folderIds.has(folderId)) {
+				const folderTabs = grouped.get(folderId) ?? [];
+				folderTabs.push(tab);
+				grouped.set(folderId, folderTabs);
+				continue;
+			}
+			root.push(tab);
+		}
+
+		return {
+			rootTabs: root,
+			sortedFolders: sorted,
+			tabsByFolderId: grouped,
+		};
+	}, [tabs, folders]);
 
 	if (!stripOpen) return null;
 
@@ -80,7 +113,7 @@ export function WorkspaceStrip() {
 
 	return (
 		<div className="flex items-center gap-1 overflow-x-auto border-b border-border bg-background/95 px-2 py-1.5 sm:px-4">
-			{tabs.map((tab) => (
+			{rootTabs.map((tab) => (
 				<WorkspaceStripItem
 					key={tab.id}
 					tab={tab}
@@ -88,6 +121,40 @@ export function WorkspaceStrip() {
 					onSelect={handleSelectTab}
 				/>
 			))}
+			{sortedFolders.map((folder) => {
+				const expanded = !folder.collapsed;
+				const folderTabs = tabsByFolderId.get(folder.id) ?? [];
+
+				return (
+					<div key={folder.id} className="flex items-center gap-1">
+						<WorkspaceStripFolderItem
+							folder={folder}
+							expanded={expanded}
+							onToggle={(_, nextExpanded) =>
+								setFolderExpanded(
+									folder.id,
+									nextExpanded,
+								)
+							}
+						/>
+						{expanded
+							? folderTabs.map((tab) => (
+									<WorkspaceStripItem
+										key={tab.id}
+										tab={tab}
+										active={
+											tab.id ===
+											activeTabId
+										}
+										onSelect={
+											handleSelectTab
+										}
+									/>
+								))
+							: null}
+					</div>
+				);
+			})}
 			<button
 				type="button"
 				onClick={handleAddTab}

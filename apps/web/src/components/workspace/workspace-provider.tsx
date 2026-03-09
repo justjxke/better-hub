@@ -38,8 +38,12 @@ interface WorkspaceTabsContextValue {
 	replaceCurrentTabWithHref: (href: string) => void;
 	openHrefInNewTab: (href: string) => void;
 	duplicateCurrentTab: () => void;
+	duplicateTab: (id: string) => void;
 	closeTab: (id: string) => void;
 	closeOtherTabs: (id: string) => void;
+	moveTabToFolder: (tabId: string, folderId: string | null) => void;
+	createFolder: (seed?: Partial<Pick<WorkspaceFolder, "name" | "icon" | "color">>) => void;
+	addTabToNewFolder: (tabId: string) => void;
 	setFolderExpanded: (folderId: string, expanded: boolean) => void;
 	updateFolderMeta: (folderId: string, patch: WorkspaceFolderMetaPatch) => void;
 	deleteFolderKeepTabs: (folderId: string) => void;
@@ -84,6 +88,21 @@ function createTabFromHref(href: string, position: number): WorkspaceTab {
 	};
 }
 
+function createFolderRecord(
+	position: number,
+	seed?: Partial<Pick<WorkspaceFolder, "name" | "icon" | "color">>,
+): WorkspaceFolder {
+	const name = seed?.name?.trim();
+	return {
+		id: createId(),
+		name: name && name.length > 0 ? name : "New folder",
+		icon: seed?.icon ?? "folder",
+		color: seed?.color ?? "slate",
+		position,
+		collapsed: false,
+	};
+}
+
 function resolveNextActiveTabId(
 	tabs: WorkspaceTab[],
 	currentActiveTabId: string | null,
@@ -97,6 +116,21 @@ function resolveNextActiveTabId(
 		return currentActiveTabId;
 	}
 	return tabs[0]?.id ?? null;
+}
+
+function normalizeFolderMetaPatch(patch: WorkspaceFolderMetaPatch): WorkspaceFolderMetaPatch {
+	if (patch.name === undefined) return patch;
+
+	const trimmedName = patch.name.trim();
+	if (!trimmedName) {
+		const { name: _name, ...rest } = patch;
+		return rest;
+	}
+
+	return {
+		...patch,
+		name: trimmedName,
+	};
 }
 
 export function WorkspaceProvider({ children, initialSession }: WorkspaceProviderProps) {
@@ -181,6 +215,29 @@ export function WorkspaceProvider({ children, initialSession }: WorkspaceProvide
 		});
 	}, []);
 
+	const duplicateTab = useCallback((id: string) => {
+		setSession((prev) => {
+			const currentIndex = prev.tabs.findIndex((tab) => tab.id === id);
+			if (currentIndex === -1) return prev;
+
+			const currentTab = prev.tabs[currentIndex];
+			const duplicatedTab: WorkspaceTab = {
+				...currentTab,
+				id: createId(),
+			};
+			const tabs = [...prev.tabs];
+			tabs.splice(currentIndex + 1, 0, duplicatedTab);
+			const normalizedTabs = withNormalizedTabPositions(tabs);
+
+			return {
+				...prev,
+				tabs: normalizedTabs,
+				activeTabId: duplicatedTab.id,
+				mru: touchMru(prev.mru, duplicatedTab.id),
+			};
+		});
+	}, []);
+
 	const duplicateCurrentTab = useCallback(() => {
 		setSession((prev) => {
 			const activeTabId = prev.activeTabId ?? prev.tabs[0]?.id;
@@ -243,6 +300,61 @@ export function WorkspaceProvider({ children, initialSession }: WorkspaceProvide
 		});
 	}, []);
 
+	const moveTabToFolder = useCallback((tabId: string, folderId: string | null) => {
+		setSession((prev) => {
+			if (!prev.tabs.some((tab) => tab.id === tabId)) return prev;
+			if (folderId && !prev.folders.some((folder) => folder.id === folderId)) {
+				return prev;
+			}
+
+			return {
+				...prev,
+				tabs: prev.tabs.map((tab) =>
+					tab.id === tabId
+						? { ...tab, parentFolderId: folderId }
+						: tab,
+				),
+			};
+		});
+	}, []);
+
+	const createFolder = useCallback(
+		(seed?: Partial<Pick<WorkspaceFolder, "name" | "icon" | "color">>) => {
+			setSession((prev) => {
+				const folder = createFolderRecord(prev.folders.length, seed);
+				return {
+					...prev,
+					folders: withNormalizedFolderPositions([
+						...prev.folders,
+						folder,
+					]),
+				};
+			});
+		},
+		[],
+	);
+
+	const addTabToNewFolder = useCallback((tabId: string) => {
+		setSession((prev) => {
+			const tab = prev.tabs.find((entry) => entry.id === tabId);
+			if (!tab) return prev;
+
+			const folder = createFolderRecord(prev.folders.length, {
+				name: tab.title,
+			});
+
+			return {
+				...prev,
+				folders: withNormalizedFolderPositions([...prev.folders, folder]),
+				tabs: prev.tabs.map((entry) =>
+					entry.id === tabId
+						? { ...entry, parentFolderId: folder.id }
+						: entry,
+				),
+			};
+		});
+	}, []);
+
 	const setFolderExpanded = useCallback((folderId: string, expanded: boolean) => {
 		setSession((prev) => ({
 			...prev,
@@ -256,10 +368,15 @@ export function WorkspaceProvider({ children, initialSession }: WorkspaceProvide
 
 	const updateFolderMeta = useCallback(
 		(folderId: string, patch: WorkspaceFolderMetaPatch) => {
+			const normalizedPatch = normalizeFolderMetaPatch(patch);
+			if (Object.keys(normalizedPatch).length === 0) return;
+
 			setSession((prev) => ({
 				...prev,
 				folders: prev.folders.map((folder) =>
-					folder.id === folderId ? { ...folder, ...patch } : folder,
+					folder.id === folderId
+						? { ...folder, ...normalizedPatch }
+						: folder,
 				),
 			}));
 		},
@@ -336,8 +453,12 @@ export function WorkspaceProvider({ children, initialSession }: WorkspaceProvide
 				replaceCurrentTabWithHref,
 				openHrefInNewTab,
 				duplicateCurrentTab,
+				duplicateTab,
 				closeTab,
 				closeOtherTabs,
+				moveTabToFolder,
+				createFolder,
+				addTabToNewFolder,
 				setFolderExpanded,
 				updateFolderMeta,
 				deleteFolderKeepTabs,
