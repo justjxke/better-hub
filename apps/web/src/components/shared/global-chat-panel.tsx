@@ -6,6 +6,7 @@ import { X, Code2, ChevronRight, Ghost, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AIChat } from "@/components/shared/ai-chat";
 import { useGlobalChat, type InlineContext } from "@/components/shared/global-chat-provider";
+import { useWorkspaceLayoutSync } from "@/components/workspace/use-workspace-layout-sync";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import {
 	searchRepoFiles,
@@ -179,6 +180,7 @@ export function GlobalChatPanel() {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const isMobile = useIsMobile();
+	const { rightSidebarWidth, updateActiveLayout } = useWorkspaceLayoutSync();
 
 	// Defer rendering until after hydration — this panel starts hidden (translate-x-full)
 	// and depends on client-only state (chat history, persisted context), so SSR is pointless
@@ -241,8 +243,17 @@ export function GlobalChatPanel() {
 	const DEFAULT_PANEL_WIDTH = 380;
 	const MIN_PANEL_WIDTH = 320;
 	const MAX_PANEL_WIDTH = 700;
-	const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
+	const [panelWidth, setPanelWidth] = useState(rightSidebarWidth ?? DEFAULT_PANEL_WIDTH);
 	const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+	const panelWidthRef = useRef(panelWidth);
+
+	useEffect(() => {
+		panelWidthRef.current = panelWidth;
+	}, [panelWidth]);
+
+	useEffect(() => {
+		setPanelWidth(rightSidebarWidth ?? DEFAULT_PANEL_WIDTH);
+	}, [rightSidebarWidth]);
 
 	const handleResizeStart = useCallback(
 		(e: React.MouseEvent) => {
@@ -253,23 +264,28 @@ export function GlobalChatPanel() {
 				// Dragging left = increasing width (panel anchored to right)
 				const delta = dragRef.current.startX - ev.clientX;
 				const raw = dragRef.current.startWidth + delta;
-				setPanelWidth(
-					Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, raw)),
+				const clamped = Math.max(
+					MIN_PANEL_WIDTH,
+					Math.min(MAX_PANEL_WIDTH, raw),
 				);
+				setPanelWidth(clamped);
+				panelWidthRef.current = clamped;
 			};
 			const onUp = () => {
+				const finalWidth = panelWidthRef.current;
 				dragRef.current = null;
 				document.removeEventListener("mousemove", onMove);
 				document.removeEventListener("mouseup", onUp);
 				document.body.style.userSelect = "";
 				document.body.style.cursor = "";
+				updateActiveLayout({ rightSidebarWidth: finalWidth });
 			};
 			document.addEventListener("mousemove", onMove);
 			document.addEventListener("mouseup", onUp);
 			document.body.style.userSelect = "none";
 			document.body.style.cursor = "col-resize";
 		},
-		[panelWidth],
+		[panelWidth, updateActiveLayout],
 	);
 
 	// Active file from URL ?file= param (set by PR diff viewer)

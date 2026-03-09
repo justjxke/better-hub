@@ -10,6 +10,7 @@ import {
 	type ReactNode,
 } from "react";
 import type { GhostTabState } from "@/lib/chat-store";
+import { useWorkspaceLayoutSync } from "@/components/workspace/use-workspace-layout-sync";
 
 export interface InlineContext {
 	filename: string;
@@ -151,6 +152,7 @@ export function GlobalChatProvider({ children, initialTabState }: GlobalChatProv
 	});
 
 	const [tabState, setTabState] = useState<GhostTabState>(initialTabState);
+	const { rightSidebarOpen, updateActiveLayout } = useWorkspaceLayoutSync();
 
 	const contextHandlerRef = useRef<AddCodeContextFn | null>(null);
 	// Track open state for synchronous keyboard shortcut checks
@@ -159,6 +161,15 @@ export function GlobalChatProvider({ children, initialTabState }: GlobalChatProv
 	const lastClosedPathnameRef = useRef<string | null>(null);
 	// Multiple sources can contribute to "isWorking" (e.g. chat streaming, prompt processing)
 	const workingSourcesRef = useRef<Set<string>>(new Set());
+
+	useEffect(() => {
+		setState((prev) =>
+			prev.isOpen === rightSidebarOpen
+				? prev
+				: { ...prev, isOpen: rightSidebarOpen },
+		);
+		isOpenRef.current = rightSidebarOpen;
+	}, [rightSidebarOpen]);
 
 	// ── Tab mutations (optimistic + fire-and-forget POST) ──────────────
 
@@ -308,22 +319,25 @@ export function GlobalChatProvider({ children, initialTabState }: GlobalChatProv
 	const openChat = useCallback(
 		(config: ChatConfig) => {
 			setContext(config);
+			updateActiveLayout({ rightSidebarOpen: true });
 			setState((prev) => ({ ...prev, isOpen: true }));
 			isOpenRef.current = true;
 			focusGhostInput();
 		},
-		[setContext, focusGhostInput],
+		[setContext, focusGhostInput, updateActiveLayout],
 	);
 
 	const closeChat = useCallback(() => {
 		lastClosedPathnameRef.current = window.location.pathname;
+		updateActiveLayout({ rightSidebarOpen: false });
 		setState((prev) => ({ ...prev, isOpen: false }));
 		isOpenRef.current = false;
-	}, []);
+	}, [updateActiveLayout]);
 
 	const toggleChat = useCallback(() => {
 		setState((prev) => {
 			const opening = !prev.isOpen;
+			updateActiveLayout({ rightSidebarOpen: opening });
 			isOpenRef.current = opening;
 			if (opening) {
 				const currentPathname = window.location.pathname;
@@ -343,7 +357,7 @@ export function GlobalChatProvider({ children, initialTabState }: GlobalChatProv
 			}
 			return { ...prev, isOpen: opening };
 		});
-	}, [focusGhostInput, addTab]);
+	}, [focusGhostInput, addTab, updateActiveLayout]);
 
 	const syncIsWorking = useCallback(() => {
 		const working = workingSourcesRef.current.size > 0;
@@ -374,13 +388,14 @@ export function GlobalChatProvider({ children, initialTabState }: GlobalChatProv
 
 	const addCodeContext = useCallback(
 		(context: InlineContext) => {
+			updateActiveLayout({ rightSidebarOpen: true });
 			setState((prev) => ({ ...prev, isOpen: true }));
 			setTimeout(() => {
 				contextHandlerRef.current?.(context);
 			}, 50);
 			focusGhostInput();
 		},
-		[focusGhostInput],
+		[focusGhostInput, updateActiveLayout],
 	);
 
 	const registerContextHandler = useCallback((fn: AddCodeContextFn) => {

@@ -19,6 +19,7 @@ import { applyWorkspaceDndIntentToSession, type WorkspaceDndIntent } from "./use
 import {
 	DEFAULT_WORKSPACE_LAYOUT,
 	type WorkspaceFolder,
+	type WorkspaceLayoutState,
 	type WorkspaceSession,
 	type WorkspaceTab,
 } from "./workspace-types";
@@ -56,6 +57,8 @@ interface WorkspaceTabsContextValue {
 	deleteFolderKeepTabs: (folderId: string) => void;
 	deleteFolderRemoveTabs: (folderId: string) => void;
 	applyWorkspaceDndIntent: (intent: WorkspaceDndIntent) => void;
+	updateTabLayout: (tabId: string, patch: Partial<WorkspaceLayoutState>) => void;
+	updateActiveTabLayout: (patch: Partial<WorkspaceLayoutState>) => void;
 }
 
 const WorkspaceTabsContext = createContext<WorkspaceTabsContextValue | null>(null);
@@ -494,6 +497,70 @@ export function WorkspaceProvider({ children, initialSession }: WorkspaceProvide
 		setSession((prev) => applyWorkspaceDndIntentToSession(prev, intent));
 	}, []);
 
+	const updateTabLayout = useCallback(
+		(tabId: string, patch: Partial<WorkspaceLayoutState>) => {
+			if (Object.keys(patch).length === 0) return;
+			setSession((prev) => {
+				const target = prev.tabs.find((tab) => tab.id === tabId);
+				if (!target) return prev;
+
+				const nextLayout = { ...target.layout, ...patch };
+				if (
+					nextLayout.leftSidebarOpen ===
+						target.layout.leftSidebarOpen &&
+					nextLayout.leftSidebarWidth ===
+						target.layout.leftSidebarWidth &&
+					nextLayout.rightSidebarOpen ===
+						target.layout.rightSidebarOpen &&
+					nextLayout.rightSidebarWidth ===
+						target.layout.rightSidebarWidth
+				) {
+					return prev;
+				}
+
+				return {
+					...prev,
+					tabs: prev.tabs.map((tab) =>
+						tab.id === tabId
+							? { ...tab, layout: nextLayout }
+							: tab,
+					),
+				};
+			});
+		},
+		[],
+	);
+
+	const updateActiveTabLayout = useCallback((patch: Partial<WorkspaceLayoutState>) => {
+		if (Object.keys(patch).length === 0) return;
+		setSession((prev) => {
+			const activeTabId = prev.activeTabId ?? prev.tabs[0]?.id;
+			if (!activeTabId) return prev;
+
+			const target = prev.tabs.find((tab) => tab.id === activeTabId);
+			if (!target) return prev;
+
+			const nextLayout = { ...target.layout, ...patch };
+			if (
+				nextLayout.leftSidebarOpen === target.layout.leftSidebarOpen &&
+				nextLayout.leftSidebarWidth === target.layout.leftSidebarWidth &&
+				nextLayout.rightSidebarOpen === target.layout.rightSidebarOpen &&
+				nextLayout.rightSidebarWidth === target.layout.rightSidebarWidth
+			) {
+				return prev;
+			}
+
+			return {
+				...prev,
+				tabs: prev.tabs.map((tab) =>
+					tab.id === activeTabId
+						? { ...tab, layout: nextLayout }
+						: tab,
+				),
+			};
+		});
+	}, []);
+
 	useEffect(() => {
 		if (!hasMountedRef.current) {
 			hasMountedRef.current = true;
@@ -542,6 +609,8 @@ export function WorkspaceProvider({ children, initialSession }: WorkspaceProvide
 				deleteFolderKeepTabs,
 				deleteFolderRemoveTabs,
 				applyWorkspaceDndIntent,
+				updateTabLayout,
+				updateActiveTabLayout,
 			}}
 		>
 			{children}
