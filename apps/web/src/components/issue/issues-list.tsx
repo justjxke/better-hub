@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useTransition, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { WorkspaceLink } from "@/components/workspace/workspace-link";
 import Image from "next/image";
 import {
 	CircleDot,
@@ -976,7 +976,7 @@ export function IssuesList({
 					const reactionCount = issue.reactions?.["+1"] ?? 0;
 
 					return (
-						<Link
+						<WorkspaceLink
 							key={issue.id}
 							ref={(el) => {
 								issueLinksRef.current[index] = el;
@@ -1054,7 +1054,7 @@ export function IssuesList({
 																a.login
 															}
 														>
-															<Link
+															<WorkspaceLink
 																href={`/users/${a.login}`}
 															>
 																<Image
@@ -1072,7 +1072,7 @@ export function IssuesList({
 																	}
 																	className="rounded-full border border-border hover:ring-2 hover:ring-primary/50 transition-all"
 																/>
-															</Link>
+															</WorkspaceLink>
 														</UserTooltip>
 													),
 												)}
@@ -1090,7 +1090,7 @@ export function IssuesList({
 													.login
 											}
 										>
-											<Link
+											<WorkspaceLink
 												href={`/users/${issue.user.login}`}
 												className="flex items-center gap-1 text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors"
 											>
@@ -1120,7 +1120,7 @@ export function IssuesList({
 															.login
 													}
 												</span>
-											</Link>
+											</WorkspaceLink>
 										</UserTooltip>
 									)}
 									<span className="text-[11px] text-muted-foreground/50">
@@ -1167,7 +1167,7 @@ export function IssuesList({
 									)}
 								</div>
 							</div>
-						</Link>
+						</WorkspaceLink>
 					);
 				})}
 

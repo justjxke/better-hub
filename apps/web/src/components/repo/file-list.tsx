@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { WorkspaceLink } from "@/components/workspace/workspace-link";
 import { formatBytes, encodeFilePath } from "@/lib/github-utils";
 import { FileTypeIcon } from "@/components/shared/file-icon";
 
@@ -42,7 +42,7 @@ export function FileList({ items, owner, repo, currentRef }: FileListProps) {
 						: `/${owner}/${repo}/blob/${currentRef}/${encodeFilePath(item.path)}`;
 
 				return (
-					<Link
+					<WorkspaceLink
 						key={item.path}
 						href={href}
 						className="group flex items-center gap-3 px-4 py-2 hover:bg-muted/50 transition-colors"
@@ -61,7 +61,7 @@ export function FileList({ items, owner, repo, currentRef }: FileListProps) {
 									{formatBytes(item.size)}
 								</span>
 							)}
-					</Link>
+					</WorkspaceLink>
 				);
 			})}
 		</div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
-import Link from "next/link";
+import { WorkspaceLink } from "@/components/workspace/workspace-link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronRight, Search, X } from "lucide-react";
 import { FileTypeIcon } from "@/components/shared/file-icon";
@@ -375,7 +375,7 @@ const TreeNode = memo(function TreeNode({
 	}
 
 	return (
-		<Link
+		<WorkspaceLink
 			href={`/${owner}/${repo}/blob/${defaultBranch}/${encodeFilePath(node.path)}`}
 			prefetch={true}
 			className={cn(
@@ -396,6 +396,6 @@ const TreeNode = memo(function TreeNode({
 			)}
 			<FileTypeIcon name={node.name} type="file" className="w-4 h-4 shrink-0" />
 			<span className="text-[12px] font-mono truncate">{node.name}</span>
-		</Link>
+		</WorkspaceLink>
 	);
 });

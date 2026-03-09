@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
+import { WorkspaceLink } from "@/components/workspace/workspace-link";
 import { Bell, GitPullRequest, CircleDot, CheckCircle2, Clock, Check, Loader2 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -128,13 +128,13 @@ export function NotificationSheet({
 								Clear all
 							</button>
 						)}
-						<Link
+						<WorkspaceLink
 							href="/notifications"
 							onClick={() => onOpenChange(false)}
 							className="text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors"
 						>
 							View all
-						</Link>
+						</WorkspaceLink>
 					</div>
 				</div>
 
@@ -163,7 +163,7 @@ export function NotificationSheet({
 									<span className="mt-0.5 text-muted-foreground/60 shrink-0">
 										{icon}
 									</span>
-									<Link
+									<WorkspaceLink
 										href={href}
 										onClick={async () => {
 											onOpenChange(
@@ -264,7 +264,7 @@ export function NotificationSheet({
 												/>
 											</span>
 										</div>
-									</Link>
+									</WorkspaceLink>
 									<button
 										disabled={isMarking}
 										onClick={() =>

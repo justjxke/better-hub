@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import { WorkspaceLink } from "@/components/workspace/workspace-link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useMutationSubscription } from "@/hooks/use-mutation-subscription";
@@ -209,7 +209,7 @@ export function RepoNav({
 			className="relative flex items-center gap-1 pt-2 pb-0 overflow-x-auto no-scrollbar"
 		>
 			{tabs.map((tab) => (
-				<Link
+				<WorkspaceLink
 					key={tab.label}
 					href={tab.href}
 					data-active={tab.active}
@@ -233,7 +233,7 @@ export function RepoNav({
 							{tab.count}
 						</span>
 					)}
-				</Link>
+				</WorkspaceLink>
 			))}
 			<div
 				className={cn(

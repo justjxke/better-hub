@@ -3,7 +3,8 @@
 import { useState, useMemo, useRef, useCallback, useTransition, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { WorkspaceLink } from "@/components/workspace/workspace-link";
+import { useWorkspaceNavigation } from "@/components/workspace/use-workspace-navigation";
 import Image from "next/image";
 import {
 	GitPullRequest,
@@ -177,6 +178,7 @@ function PRContextMenu({
 	const menuRef = useRef<HTMLDivElement>(null);
 	const [copiedField, setCopiedField] = useState<string | null>(null);
 	const [actionPending, setActionPending] = useState(false);
+	const { openInNewWorkspaceTab } = useWorkspaceNavigation();
 
 	useEffect(() => {
 		const handler = (e: MouseEvent) => {
@@ -250,14 +252,14 @@ function PRContextMenu({
 					<Eye className="w-3.5 h-3.5" />
 					Peek PR
 				</button>
-				<Link href={prUrl} className={itemClass} onClick={onClose}>
+				<WorkspaceLink href={prUrl} className={itemClass} onClick={onClose}>
 					<GitPullRequest className="w-3.5 h-3.5" />
 					Open
-				</Link>
+				</WorkspaceLink>
 				<button
 					className={itemClass}
 					onClick={() => {
-						window.open(prUrl, "_blank");
+						openInNewWorkspaceTab(prUrl);
 						onClose();
 					}}
 				>
@@ -444,7 +446,7 @@ function PRPeekSheet({
 				/>
 				<div className="absolute top-4 right-4 z-10 flex items-center gap-2">
 					{pr && (
-						<Link
+						<WorkspaceLink
 							href={`/${owner}/${repo}/pulls/${pr.number}`}
 							title="Open full page"
 							className="rounded-sm p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
@@ -453,7 +455,7 @@ function PRPeekSheet({
 							<span className="sr-only">
 								Open full page
 							</span>
-						</Link>
+						</WorkspaceLink>
 					)}
 					<button
 						onClick={() => onOpenChange(false)}
@@ -1343,13 +1345,13 @@ export function PRsList({
 						onClear={clearAllFilters}
 					/>
 
-					<Link
+					<WorkspaceLink
 						href={`/repos/${owner}/${repo}/pulls/new`}
 						className="flex ms-auto items-center gap-1.5 px-3 py-1.5 text-xs bg-primary hover:bg-primary/90 text-background transition-colors cursor-pointer rounded-sm"
 					>
 						<Plus className="w-3 h-3" />
 						New PR
-					</Link>
+					</WorkspaceLink>
 				</div>
 
 				{/* Advanced filters panel */}
@@ -1782,7 +1784,7 @@ export function PRsList({
 							currentUserLogin.toLowerCase();
 
 					return (
-						<Link
+						<WorkspaceLink
 							key={pr.id}
 							href={`/${owner}/${repo}/pulls/${pr.number}`}
 							onMouseEnter={() =>
@@ -1860,7 +1862,7 @@ export function PRsList({
 																r.login
 															}
 														>
-															<Link
+															<WorkspaceLink
 																href={`/users/${r.login}`}
 															>
 																<Image
@@ -1878,7 +1880,7 @@ export function PRsList({
 																	}
 																	className="rounded-full border border-border hover:ring-2 hover:ring-primary/50 transition-all"
 																/>
-															</Link>
+															</WorkspaceLink>
 														</UserTooltip>
 													),
 												)}
@@ -1895,7 +1897,7 @@ export function PRsList({
 													.login
 											}
 										>
-											<Link
+											<WorkspaceLink
 												href={`/users/${pr.user.login}`}
 												className="flex items-center gap-1 text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors"
 											>
@@ -1931,7 +1933,7 @@ export function PRsList({
 															.login
 													}
 												</span>
-											</Link>
+											</WorkspaceLink>
 										</UserTooltip>
 									)}
 									{pr.base?.ref &&
@@ -2045,7 +2047,7 @@ export function PRsList({
 																a.login
 															}
 														>
-															<Link
+															<WorkspaceLink
 																href={`/users/${a.login}`}
 															>
 																<Image
@@ -2063,7 +2065,7 @@ export function PRsList({
 																	}
 																	className="rounded-full border border-border hover:ring-2 hover:ring-primary/50 transition-all"
 																/>
-															</Link>
+															</WorkspaceLink>
 														</UserTooltip>
 													),
 												)}
@@ -2071,7 +2073,7 @@ export function PRsList({
 									)}
 								</div>
 							</div>
-						</Link>
+						</WorkspaceLink>
 					);
 				})}
 

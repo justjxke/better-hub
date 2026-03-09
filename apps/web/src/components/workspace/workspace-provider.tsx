@@ -9,7 +9,12 @@ import {
 	useState,
 	type ReactNode,
 } from "react";
-import { classifyWorkspaceRoute, getWorkspaceTabTitle } from "@/lib/workspace-route";
+import { usePathname, useSearchParams } from "next/navigation";
+import {
+	classifyWorkspaceRoute,
+	getWorkspaceTabTitle,
+	isSameWorkspaceTarget,
+} from "@/lib/workspace-route";
 import { applyWorkspaceDndIntentToSession, type WorkspaceDndIntent } from "./use-workspace-dnd";
 import {
 	DEFAULT_WORKSPACE_LAYOUT,
@@ -34,6 +39,7 @@ interface WorkspaceTabsContextValue {
 	activeTabId: string | null;
 	mru: string[];
 	toggleStrip: () => void;
+	reconcileIncomingHrefOnFirstLoad: (href: string) => void;
 	seedCurrentPageIfEmpty: (pathname: string) => void;
 	activateTab: (id: string) => void;
 	replaceCurrentTabWithHref: (href: string) => void;
@@ -138,9 +144,60 @@ function normalizeFolderMetaPatch(patch: WorkspaceFolderMetaPatch): WorkspaceFol
 export function WorkspaceProvider({ children, initialSession }: WorkspaceProviderProps) {
 	const [session, setSession] = useState<WorkspaceSession>(initialSession);
 	const hasMountedRef = useRef(false);
+	const hasReconciledIncomingHrefRef = useRef(false);
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
 
 	const toggleStrip = useCallback(() => {
 		setSession((prev) => ({ ...prev, stripOpen: !prev.stripOpen }));
+	}, []);
+
+	const reconcileIncomingHrefOnFirstLoad = useCallback((href: string) => {
+		const normalizedHref = normalizeHref(href);
+		setSession((prev) => {
+			const matchingTab = prev.tabs.find((tab) =>
+				isSameWorkspaceTarget(tab.href, normalizedHref),
+			);
+			if (matchingTab) {
+				return {
+					...prev,
+					activeTabId: matchingTab.id,
+					mru: touchMru(prev.mru, matchingTab.id),
+				};
+			}
+
+			if (prev.tabs.length === 0) {
+				const tab = createTabFromHref(normalizedHref, 0);
+				return {
+					...prev,
+					tabs: [tab],
+					activeTabId: tab.id,
+					mru: [tab.id],
+				};
+			}
+
+			const targetTabId = prev.activeTabId ?? prev.tabs[0]?.id;
+			if (!targetTabId) return prev;
+
+			const tabs = prev.tabs.map((tab) =>
+				tab.id === targetTabId
+					? {
+							...tab,
+							href: normalizedHref,
+							title: getWorkspaceTabTitle(normalizedHref),
+							kind: classifyWorkspaceRoute(normalizedHref)
+								.kind,
+						}
+					: tab,
+			);
+
+			return {
+				...prev,
+				tabs,
+				activeTabId: targetTabId,
+				mru: touchMru(prev.mru, targetTabId),
+			};
+		});
 	}, []);
 
 	const seedCurrentPageIfEmpty = useCallback((pathname: string) => {
@@ -203,6 +260,20 @@ export function WorkspaceProvider({ children, initialSession }: WorkspaceProvide
 			};
 		});
 	}, []);
+
+	useEffect(() => {
+		const currentPath = pathname || "/";
+		const query = searchParams.toString();
+		const currentHref = query ? `${currentPath}?${query}` : currentPath;
+
+		if (!hasReconciledIncomingHrefRef.current) {
+			hasReconciledIncomingHrefRef.current = true;
+			reconcileIncomingHrefOnFirstLoad(currentHref);
+			return;
+		}
+
+		replaceCurrentTabWithHref(currentHref);
+	}, [pathname, reconcileIncomingHrefOnFirstLoad, replaceCurrentTabWithHref, searchParams]);
 
 	const openHrefInNewTab = useCallback((href: string) => {
 		setSession((prev) => {
@@ -454,6 +525,7 @@ export function WorkspaceProvider({ children, initialSession }: WorkspaceProvide
 				activeTabId: session.activeTabId,
 				mru: session.mru,
 				toggleStrip,
+				reconcileIncomingHrefOnFirstLoad,
 				seedCurrentPageIfEmpty,
 				activateTab,
 				replaceCurrentTabWithHref,

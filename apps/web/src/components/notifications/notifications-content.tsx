@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useQueryState, parseAsStringLiteral } from "nuqs";
-import Link from "next/link";
+import { WorkspaceLink } from "@/components/workspace/workspace-link";
 import {
 	Bell,
 	GitPullRequest,
@@ -189,12 +189,12 @@ export function NotificationsContent({ notifications }: { notifications: Notific
 				{Object.entries(grouped).map(([repo, notifs]) => (
 					<div key={repo}>
 						<div className="flex items-center gap-2 mb-2 px-1">
-							<Link
+							<WorkspaceLink
 								href={`/${repo}`}
 								className="text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors"
 							>
 								{repo}
-							</Link>
+							</WorkspaceLink>
 							<span className="text-[9px] font-mono text-muted-foreground/60 border border-border px-1 py-0.5">
 								{notifs.length}
 							</span>
@@ -219,7 +219,7 @@ export function NotificationsContent({ notifications }: { notifications: Notific
 												<Bell className="w-3.5 h-3.5" />
 											)}
 										</div>
-										<Link
+										<WorkspaceLink
 											href={
 												href ||
 												"#"
@@ -268,7 +268,7 @@ export function NotificationsContent({ notifications }: { notifications: Notific
 													/>
 												</span>
 											</div>
-										</Link>
+										</WorkspaceLink>
 										<button
 											disabled={
 												isMarking

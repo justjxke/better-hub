@@ -1,21 +1,18 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { parseGitHubUrl, toInternalUrl } from "@/lib/github-utils";
+import { useWorkspaceNavigation } from "@/components/workspace/use-workspace-navigation";
 
 export function GitHubLinkInterceptor({ children }: { children: React.ReactNode }) {
-	const router = useRouter();
 	const ref = useRef<HTMLDivElement>(null);
+	const { handleAnchorIntent } = useWorkspaceNavigation();
 
 	useEffect(() => {
 		const el = ref.current;
 		if (!el) return;
 
 		function handleClick(e: MouseEvent) {
-			// Don't intercept modified clicks (new tab, etc.)
-			if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0)
-				return;
+			if (e.defaultPrevented) return;
 
 			const anchor = (e.target as HTMLElement).closest("a");
 			if (!anchor) return;
@@ -24,27 +21,24 @@ export function GitHubLinkInterceptor({ children }: { children: React.ReactNode 
 			const href = anchor.href;
 			if (!href) return;
 
-			// Only intercept github.com links
-			try {
-				const url = new URL(href);
-				if (url.hostname !== "github.com") return;
-			} catch {
-				return;
-			}
-
-			const parsed = parseGitHubUrl(href);
-			if (!parsed) return;
-
-			const internalPath = toInternalUrl(href);
-			if (internalPath === href) return;
+			const wasHandled = handleAnchorIntent({
+				href,
+				metaKey: e.metaKey,
+				ctrlKey: e.ctrlKey,
+				shiftKey: e.shiftKey,
+				altKey: e.altKey,
+				button: e.button,
+				target: anchor.getAttribute("target"),
+				download: anchor.hasAttribute("download"),
+			});
+			if (!wasHandled) return;
 
 			e.preventDefault();
-			router.push(internalPath);
 		}
 
 		el.addEventListener("click", handleClick);
 		return () => el.removeEventListener("click", handleClick);
-	}, [router]);
+	}, [handleAnchorIntent]);
 
 	return <div ref={ref}>{children}</div>;
 }
