@@ -45,5 +45,8 @@ certificates
 # GitHub images
 .github-images
 
+# local worktrees
+.worktrees
+
 flake.lock
 flake.nix
