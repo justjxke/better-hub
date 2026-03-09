@@ -262,6 +262,55 @@ model PinnedItem {
   @@map("pinned_items")
 }
 
+
+model WorkspaceTab {
+  userId         String
+  tabId          String
+  parentFolderId String?
+  title          String
+  href           String
+  kind           String
+  icon           String?
+  contextJson    String?
+  layoutJson     String?
+  position       Int
+  lastActiveAt   String
+  createdAt      String
+  updatedAt      String
+
+  @@id([userId, tabId])
+  @@index([userId, position])
+  @@index([userId, parentFolderId, position])
+  @@map("workspace_tabs")
+}
+
+model WorkspaceFolder {
+  userId    String
+  folderId  String
+  name      String
+  icon      String
+  color     String
+  position  Int
+  collapsed Boolean @default(true)
+  createdAt String
+  updatedAt String
+
+  @@id([userId, folderId])
+  @@index([userId, position])
+  @@map("workspace_folders")
+}
+
+model WorkspaceState {
+  userId      String  @id
+  stripOpen   Boolean @default(false)
+  activeTabId String?
+  mruJson     String?
+  createdAt   String
+  updatedAt   String
+
+  @@map("workspace_state")
+}
+
 model UsageLog {
   id              String   @id @default(cuid())
   userId          String
