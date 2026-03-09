@@ -16,6 +16,7 @@ interface WorkspaceStripItemProps {
 	tab: WorkspaceTab;
 	active: boolean;
 	onSelect: (tab: WorkspaceTab) => void;
+	folderTintColor?: string;
 }
 
 function resolveNextTabHrefAfterClose(
@@ -42,7 +43,12 @@ function resolveNextTabHrefAfterClose(
 	return nextTabs.find((tab) => tab.id === nextActiveId)?.href ?? nextTabs[0]?.href ?? null;
 }
 
-export function WorkspaceStripItem({ tab, active, onSelect }: WorkspaceStripItemProps) {
+export function WorkspaceStripItem({
+	tab,
+	active,
+	onSelect,
+	folderTintColor,
+}: WorkspaceStripItemProps) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const {
@@ -94,11 +100,15 @@ export function WorkspaceStripItem({ tab, active, onSelect }: WorkspaceStripItem
 			<button
 				type="button"
 				onClick={() => onSelect(tab)}
+				data-active={active ? "true" : "false"}
+				data-folder-color={folderTintColor}
 				className={cn(
 					"shrink-0 max-w-56 truncate rounded-md border px-2.5 py-1.5 text-xs transition-colors",
-					active
-						? "border-foreground/20 bg-muted text-foreground"
-						: "border-border text-muted-foreground hover:text-foreground hover:bg-muted/50",
+					folderTintColor
+						? "workspace-folder-tint-tab text-muted-foreground hover:text-foreground"
+						: active
+							? "border-foreground/20 bg-muted text-foreground"
+							: "border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground",
 				)}
 				title={tab.title || tab.href}
 			>

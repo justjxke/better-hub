@@ -124,6 +124,13 @@ export function WorkspaceStrip() {
 			{sortedFolders.map((folder) => {
 				const expanded = !folder.collapsed;
 				const folderTabs = tabsByFolderId.get(folder.id) ?? [];
+				const activeChildTab =
+					folderTabs.find((tab) => tab.id === activeTabId) ?? null;
+				const visibleFolderTabs = expanded
+					? folderTabs
+					: activeChildTab
+						? [activeChildTab]
+						: [];
 
 				return (
 					<div key={folder.id} className="flex items-center gap-1">
@@ -137,21 +144,19 @@ export function WorkspaceStrip() {
 								)
 							}
 						/>
-						{expanded
-							? folderTabs.map((tab) => (
-									<WorkspaceStripItem
-										key={tab.id}
-										tab={tab}
-										active={
-											tab.id ===
-											activeTabId
-										}
-										onSelect={
-											handleSelectTab
-										}
-									/>
-								))
-							: null}
+						{visibleFolderTabs.map((tab) => (
+							<WorkspaceStripItem
+								key={tab.id}
+								tab={tab}
+								active={tab.id === activeTabId}
+								onSelect={handleSelectTab}
+								folderTintColor={
+									expanded
+										? folder.color
+										: undefined
+								}
+							/>
+						))}
 					</div>
 				);
 			})}

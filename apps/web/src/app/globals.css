@@ -1418,3 +1418,58 @@ tr.diff-search-match-active > td {
 		transform: translate(-1%, 2%);
 	}
 }
+
+/* Workspace folder tint for expanded child tabs */
+.workspace-folder-tint-tab {
+	border-color: color-mix(
+		in srgb,
+		rgb(var(--workspace-folder-rgb, 148 163 184)) 28%,
+		var(--border)
+	);
+	background-color: color-mix(
+		in srgb,
+		rgb(var(--workspace-folder-rgb, 148 163 184)) 10%,
+		transparent
+	);
+}
+
+.workspace-folder-tint-tab:hover {
+	background-color: color-mix(
+		in srgb,
+		rgb(var(--workspace-folder-rgb, 148 163 184)) 15%,
+		transparent
+	);
+}
+
+.workspace-folder-tint-tab[data-active="true"] {
+	color: var(--foreground);
+	background-color: color-mix(
+		in srgb,
+		rgb(var(--workspace-folder-rgb, 148 163 184)) 20%,
+		transparent
+	);
+}
+
+.workspace-folder-tint-tab[data-folder-color="slate"] {
+	--workspace-folder-rgb: 148 163 184;
+}
+
+.workspace-folder-tint-tab[data-folder-color="blue"] {
+	--workspace-folder-rgb: 96 165 250;
+}
+
+.workspace-folder-tint-tab[data-folder-color="emerald"] {
+	--workspace-folder-rgb: 52 211 153;
+}
+
+.workspace-folder-tint-tab[data-folder-color="amber"] {
+	--workspace-folder-rgb: 251 191 36;
+}
+
+.workspace-folder-tint-tab[data-folder-color="rose"] {
+	--workspace-folder-rgb: 251 113 133;
+}
+
+.workspace-folder-tint-tab[data-folder-color="violet"] {
+	--workspace-folder-rgb: 167 139 250;
+}
