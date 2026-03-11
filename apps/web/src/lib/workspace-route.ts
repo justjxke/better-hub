@@ -37,18 +37,22 @@ const NON_REPO_TOP_LEVEL_PATHS = new Set([
 	"collections",
 ]);
 
-function toPathname(href: string): string {
+function toUrl(href: string): URL | null {
 	const trimmed = href.trim();
-	if (!trimmed) return "/";
+	if (!trimmed) return null;
 
 	try {
 		if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-			return new URL(trimmed).pathname;
+			return new URL(trimmed);
 		}
-		return new URL(trimmed, "https://example.com").pathname;
+		return new URL(trimmed, "https://example.com");
 	} catch {
-		return "/";
+		return null;
 	}
+}
+
+function toPathname(href: string): string {
+	return toUrl(href)?.pathname ?? "/";
 }
 
 function normalizePath(pathname: string): string {
@@ -164,6 +168,19 @@ export function classifyWorkspaceRoute(href: string): WorkspaceRouteClassificati
 	}
 
 	return { kind: "repo", owner, repo };
+}
+
+export function canonicalizeWorkspaceTabHref(href: string): string {
+	const url = toUrl(href);
+	if (!url) return "/";
+
+	const route = classifyWorkspaceRoute(url.pathname);
+	if (route.kind === "pull") {
+		url.searchParams.delete("file");
+	}
+
+	const search = url.searchParams.toString();
+	return `${normalizePath(url.pathname)}${search ? `?${search}` : ""}`;
 }
 
 export function getWorkspaceTabTitle(href: string): string {

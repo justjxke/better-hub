@@ -1,21 +1,24 @@
 "use client";
 
-import { FolderOpen, FolderX } from "lucide-react";
+import { FolderOpen, FolderPen, FolderX } from "lucide-react";
 import type { ReactNode } from "react";
 import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuItem,
+	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 
 interface WorkspaceFolderContextMenuProps {
+	onRename: () => void;
 	onDeleteKeepTabs: () => void;
 	onDeleteRemoveTabs: () => void;
 	children: ReactNode;
 }
 
 export function WorkspaceFolderContextMenu({
+	onRename,
 	onDeleteKeepTabs,
 	onDeleteRemoveTabs,
 	children,
@@ -24,6 +27,11 @@ export function WorkspaceFolderContextMenu({
 		<ContextMenu>
 			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 			<ContextMenuContent className="w-60">
+				<ContextMenuItem onSelect={onRename}>
+					<FolderPen className="size-4" />
+					Rename folder
+				</ContextMenuItem>
+				<ContextMenuSeparator />
 				<ContextMenuItem onSelect={onDeleteKeepTabs}>
 					<FolderOpen className="size-4" />
 					Delete folder and keep tabs

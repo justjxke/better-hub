@@ -192,9 +192,7 @@ export function WorkspaceStrip() {
 									}
 									onSelect={handleSelectTab}
 									folderTintColor={
-										expanded
-											? folder.color
-											: undefined
+										folder.color
 									}
 								/>
 							</div>

@@ -11,6 +11,7 @@ import {
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
+	canonicalizeWorkspaceTabHref,
 	classifyWorkspaceRoute,
 	getWorkspaceTabTitle,
 	isSameWorkspaceTarget,
@@ -72,7 +73,8 @@ function createId(): string {
 
 function normalizeHref(href: string): string {
 	const trimmed = href.trim();
-	return trimmed || "/";
+	if (!trimmed) return "/";
+	return canonicalizeWorkspaceTabHref(trimmed);
 }
 
 function withNormalizedTabPositions(tabs: WorkspaceTab[]): WorkspaceTab[] {

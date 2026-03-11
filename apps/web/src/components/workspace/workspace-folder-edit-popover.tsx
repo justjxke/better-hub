@@ -25,6 +25,8 @@ interface WorkspaceFolderEditPopoverProps {
 	folder: WorkspaceFolder;
 	onUpdate: (patch: WorkspaceFolderEditPatch) => void;
 	children: ReactNode;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }
 
 export function getWorkspaceFolderIconComponent(icon: string) {
@@ -38,6 +40,8 @@ export function WorkspaceFolderEditPopover({
 	folder,
 	onUpdate,
 	children,
+	open,
+	onOpenChange,
 }: WorkspaceFolderEditPopoverProps) {
 	const [nameDraft, setNameDraft] = useState(folder.name);
 
@@ -57,7 +61,7 @@ export function WorkspaceFolderEditPopover({
 	};
 
 	return (
-		<PopoverPrimitive.Root>
+		<PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
 			<PopoverPrimitive.Trigger asChild>{children}</PopoverPrimitive.Trigger>
 			<PopoverPrimitive.Portal>
 				<PopoverPrimitive.Content
